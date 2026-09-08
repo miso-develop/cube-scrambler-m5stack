@@ -1,0 +1,34 @@
+name: Loop Map
+description: Map a large or ambiguous effort before specification.
+title: "[Map] "
+body:
+  - type: textarea
+    id: destination
+    attributes:
+      label: Destination
+      description: What must be decided or specified when this map is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions so far
+      description: Resolved decisions and one-line outcomes. Use "None" initially when appropriate.
+      value: "- None"
+    validations:
+      required: true
+  - type: textarea
+    id: fog
+    attributes:
+      label: Not yet specified
+      description: In-scope fog that cannot yet be expressed as a precise Decision.
+      value: "- None"
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: Out of scope
+      value: "- None"
+    validations:
+      required: true

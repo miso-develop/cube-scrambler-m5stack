@@ -1,0 +1,61 @@
+name: Loop Spec
+description: Define settled behavior before implementation tickets.
+title: "[Spec] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Observable requirements, one per bullet.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Observable checks, tests, builds, or real-device evidence.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: Out of scope
+      value: "- None"
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      value: "- `PROJECT.md`"
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Implementation tasks
+      description: to-tickets updates this section after Task issues exist.
+      value: "- None yet"
+    validations:
+      required: true

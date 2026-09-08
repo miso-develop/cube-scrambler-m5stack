@@ -1,0 +1,27 @@
+name: Loop Decision
+description: Resolve one question under a Loop Map.
+title: "[Decision] "
+body:
+  - type: input
+    id: parent
+    attributes:
+      label: Parent map
+      description: Same-repository issue reference, for example #12.
+      placeholder: "#12"
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The single decision this issue must resolve.
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blocked by
+      description: Use "- None" or one same-repository [Decision] issue per line.
+      value: "- None"
+    validations:
+      required: true

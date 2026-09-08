@@ -1,0 +1,35 @@
+name: Loop Task
+description: Implement one narrow vertical slice of a settled Spec.
+title: "[Task] "
+body:
+  - type: input
+    id: parent
+    attributes:
+      label: Parent spec
+      description: Same-repository issue reference, for example #20.
+      placeholder: "#20"
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: What to build
+      description: One complete behavior for this ticket.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable completion criteria.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blocked by
+      description: Use "- None" or one same-repository [Task] issue per line.
+      value: "- None"
+    validations:
+      required: true
