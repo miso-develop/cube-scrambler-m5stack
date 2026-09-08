@@ -67,6 +67,18 @@ class DeviceProfilesTest(unittest.TestCase):
         with self.assertRaisesRegex(DeviceProfileError, "past flash size"):
             parse_device_profile(data)
 
+    def test_negative_offset_is_rejected(self) -> None:
+        data = self._profile_dict()
+        data["parts"][0]["offset"] = -1
+        with self.assertRaisesRegex(DeviceProfileError, "integer >= 0"):
+            parse_device_profile(data)
+
+    def test_noncanonical_partition_path_is_rejected(self) -> None:
+        data = self._profile_dict()
+        data["partitionFile"] = "partitions//cube_scrambler_4mb.csv"
+        with self.assertRaisesRegex(DeviceProfileError, "normalized repository-relative"):
+            parse_device_profile(data)
+
     def test_duplicate_json_key_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate.json"
