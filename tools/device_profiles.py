@@ -96,7 +96,7 @@ def _require_device_id(value: Any, field: str = "id") -> str:
     device_id = _require_string(value, field)
     if not _DEVICE_ID_RE.fullmatch(device_id):
         raise DeviceProfileError(
-            f"{field} must contain only lowercase letters, digits, and single path-safe hyphens"
+            f"{field} must use lowercase letters, digits, and path-safe hyphens"
         )
     return device_id
 
@@ -106,7 +106,7 @@ def _require_repo_relative_path(value: Any, field: str) -> str:
     if "\\" in text:
         raise DeviceProfileError(f"{field} must use forward slashes")
     path = PurePosixPath(text)
-    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+    if path.is_absolute() or path.as_posix() != text or ".." in path.parts:
         raise DeviceProfileError(f"{field} must be a normalized repository-relative path")
     return text
 
@@ -116,7 +116,7 @@ def _require_filename(value: Any, field: str, *, suffix: str | None = None) -> s
     if "\\" in text:
         raise DeviceProfileError(f"{field} must be a filename, not a path")
     path = PurePosixPath(text)
-    if path.name != text or text in {".", ".."}:
+    if path.as_posix() != text or path.name != text or text in {".", ".."}:
         raise DeviceProfileError(f"{field} must be a filename, not a path")
     if suffix is not None and not text.endswith(suffix):
         raise DeviceProfileError(f"{field} must end with {suffix}")
@@ -260,4 +260,10 @@ def load_device_profile(
             f"invalid JSON in device profile {path}: {exc.msg}"
         ) from exc
 
-    return parse_device_profile(data, expected_id=expected_id)
+    profile = parse_device_profile(data, expected_id=expected_id)
+    partition_path = REPOSITORY_ROOT / profile.partition_file
+    if not partition_path.is_file():
+        raise DeviceProfileError(
+            f"partitionFile does not exist in repository: {profile.partition_file}"
+        )
+    return profile
