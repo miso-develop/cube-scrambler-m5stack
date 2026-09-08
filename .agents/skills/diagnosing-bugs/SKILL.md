@@ -19,6 +19,6 @@ Before completion:
 
 - remove temporary diagnostic output and throwaway harnesses unless intentionally retained;
 - state the confirmed root cause and evidence;
-- record a materially new recurring failure in`troubleshooting-cases` when it provides reusable prevention value.
+- record a materially new recurring failure in `troubleshooting-cases` when it provides reusable prevention value.
 
 Do not weaken tests, requirements, project verification, or security controls to make the symptom disappear.
