@@ -5,24 +5,28 @@ on:
     branches:
       - main
     paths:
-      - "src/**"
-      - "include/**"
-      - "boards/**"
-      - "partitions/**"
-      - "tools/**"
-      - "platformio.ini"
-      - ".node-version"
-      - ".github/workflows/firmware-build.yml"
+      - '.github/workflows/firmware-build.yml'
+      - '.node-version'
+      - 'boards/**'
+      - 'include/**'
+      - 'partitions/**'
+      - 'platformio.ini'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tools/**'
   pull_request:
+    branches:
+      - main
     paths:
-      - "src/**"
-      - "include/**"
-      - "boards/**"
-      - "partitions/**"
-      - "tools/**"
-      - "platformio.ini"
-      - ".node-version"
-      - ".github/workflows/firmware-build.yml"
+      - '.github/workflows/firmware-build.yml'
+      - '.node-version'
+      - 'boards/**'
+      - 'include/**'
+      - 'partitions/**'
+      - 'platformio.ini'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tools/**'
   workflow_dispatch:
 
 permissions:
@@ -34,9 +38,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build and validate NanoC6 firmware
+    name: Build and validate NanoC6 distribution
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -44,10 +48,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.node-version'
+          package-manager-cache: false
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Cache PlatformIO
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -60,10 +70,12 @@ jobs:
       - name: Install tooling
         run: python -m pip install --disable-pip-version-check platformio==6.1.19 "cryptography>=45,<47"
 
-      - name: Validate host tools
+      - name: Validate host-side sources
         run: |
-          node --version
           node --check tools/web_installer/installer.js
+          node --check tools/generate_min2phase_tables.js
+          node --check tools/generate_web_ui.js
+          node --check tools/finalize_web_bootstrap.js
           python -m py_compile tools/build_release_bundle.py tools/check_flash_layout.py tools/generate_https_cert.py
 
       - name: Generate Min2Phase table image
@@ -83,15 +95,17 @@ jobs:
       - name: Build release Web SPIFFS
         run: pio run -e m5stack-nanoc6-release -t buildfs
 
-      - name: Validate final Flash layout
+      - name: Validate final flash layout
         run: >-
           python tools/check_flash_layout.py
           --firmware .pio/build/m5stack-nanoc6-release/firmware.bin
           --web .pio/build/m5stack-nanoc6-release/spiffs.bin
 
-      - name: Validate release bundle generation
+      - name: Build full-flash release bundle
+        run: python tools/build_release_bundle.py --version ci
+
+      - name: Validate release bundle
         run: |
-          python tools/build_release_bundle.py --version ci
           test -f .pio/release/web-installer/index.html
           test -f .pio/release/web-installer/installer.js
           test -f .pio/release/web-installer/manifest.json
@@ -101,10 +115,12 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          root = Path('.pio/release/web-installer')
-          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          root = Path('.pio/release')
+          manifest = json.loads((root / 'web-installer' / 'manifest.json').read_text(encoding='utf-8'))
+          release = json.loads((root / 'release.json').read_text(encoding='utf-8'))
           assert manifest['builds'][0]['chipFamily'] == 'ESP32-C6'
           assert manifest['builds'][0]['parts'] == [{'path': 'cube-scrambler-nanoc6-full.bin', 'offset': 0}]
           assert manifest['new_install_improv_wait_time'] == 0
-          assert (root / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
+          assert (root / 'web-installer' / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
+          assert release['repository'] == 'https://github.com/miso-develop/cube-scrambler-m5stack'
           PY
