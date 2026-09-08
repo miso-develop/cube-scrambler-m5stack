@@ -2,7 +2,7 @@
 
 ## Matt Pocock skills
 
-The following bundled skills are adapted from `mattpocock/skills`:
+The following bundled skills are adapted from`mattpocock/skills`:
 
 - `grilling`
 - `research`
@@ -16,10 +16,11 @@ The following bundled skills are adapted from `mattpocock/skills`:
 - `diagnosing-bugs`
 - `code-review`
 - `resolving-merge-conflicts`
+- parts of `skill-authoring` (adapted from `writing-for-agents`)
 
 Upstream repository: https://github.com/mattpocock/skills
 
-The bundled versions are modified for the Loop Engineering GitHub Issue model used by this repository. Planning and implementation use `[Map]` / `[Decision]` / `[Spec]` / `[Task]` work items and durable GitHub Issue / PR handoffs. Project verification is repository-specific; no Loop Verifier infrastructure is bundled here.
+The bundled versions are modified for the Loop Engineering GitHub Issue model used by this repository. Planning and implementation use`[Map]` / `[Decision]` / `[Spec]` / `[Task]` work items and durable GitHub Issue / PR handoffs. Project verification is repository-specific; no Loop Verifier infrastructure is bundled here.
 
 The upstream project is distributed under the MIT License:
 
@@ -45,9 +46,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Anthropic skill-creator
+
+`skill-authoring` also incorporates and substantially modifies concepts from Anthropic's `skills/skill-creator`, including Skill trigger design, progressive disclosure, and evaluation against representative trigger/non-trigger prompts.
+
+Upstream repository: https://github.com/anthropics/skills
+Upstream path: `skills/skill-creator`
+
+The bundled `skill-authoring` is a substantially simplified derivative: it omits Anthropic's evaluation UI, scripts, sub-agent orchestration, assets, and platform-specific workflow. It is adapted for this repository's`AGENTS.md` / `agent/` / `.agents/skills/` responsibility model.
+
+Anthropic's `skill-creator` is licensed under the Apache License 2.0. A copy of that license is included at:
+
+`licenses/ANTHROPIC-SKILL-CREATOR-APACHE-2.0.txt`
+
 ## Ponytail
 
-The bundled `ponytail` Skill is an adapted derivative of DietrichGebert's `ponytail` Skill.
+The bundled`ponytail` Skill is an adapted derivative of DietrichGebert's`ponytail` Skill.
 
 - Upstream repository: https://github.com/DietrichGebert/ponytail
 - Reviewed upstream path: `skills/ponytail/SKILL.md`
@@ -56,7 +70,7 @@ The bundled `ponytail` Skill is an adapted derivative of DietrichGebert's `ponyt
 
 The adaptation retains the useful YAGNI / existing-code / standard-library / native-platform / already-installed-dependency / minimum-correct-change decision ladder and root-cause-fix principle.
 
-It intentionally does **not** import upstream plugin hooks, command installers, persistence behavior, global "active every response" semantics, fixed terse-output requirements, or a universal minimal-test rule. Those behaviors would broaden the Skill beyond its responsibility or could conflict with explicit `[Task]` acceptance criteria, project verification, TDD, security, and reporting requirements.
+It intentionally does **not** import upstream plugin hooks, command installers, persistence behavior, global "active every response" semantics, fixed terse-output requirements, or a universal minimal-test rule. Those behaviors would broaden the Skill beyond its responsibility or could conflict with explicit`[Task]` acceptance criteria, project verification, TDD, security, and reporting requirements.
 
 No upstream executable files or dependencies are bundled by this adaptation.
 
