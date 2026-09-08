@@ -16,6 +16,7 @@ The following bundled skills are adapted from `mattpocock/skills`:
 - `diagnosing-bugs`
 - `code-review`
 - `resolving-merge-conflicts`
+- parts of `skill-authoring` (adapted from `writing-for-agents`)
 
 Upstream repository: https://github.com/mattpocock/skills
 
@@ -44,6 +45,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Anthropic skill-creator
+
+`skill-authoring` also incorporates and substantially modifies concepts from Anthropic's `skills/skill-creator`, including Skill trigger design, progressive disclosure, and evaluation against representative trigger/non-trigger prompts.
+
+Upstream repository: https://github.com/anthropics/skills
+Upstream path: `skills/skill-creator`
+
+The bundled `skill-authoring` is a substantially simplified derivative: it omits Anthropic's evaluation UI, scripts, sub-agent orchestration, assets, and platform-specific workflow. It is adapted for this repository's `AGENTS.md` / `agent/` / `.agents/skills/` responsibility model.
+
+Anthropic's `skill-creator` is licensed under the Apache License 2.0. A copy of that license is included at:
+
+`licenses/ANTHROPIC-SKILL-CREATOR-APACHE-2.0.txt`
 
 ## Ponytail
 

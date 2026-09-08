@@ -2,7 +2,7 @@
 name: diagnosing-bugs
 description: Diagnose hard bugs, regressions, flaky failures, or performance problems with a reproducible feedback loop and falsifiable hypotheses.
 metadata:
-  version: "1.1"
+  version: "1.2"
   source: "adapted from mattpocock/skills"
   license: "MIT"
 ---
@@ -15,4 +15,10 @@ Confirm the reproduction matches the report, minimize it, then form several fals
 
 When the cause is established, retain/add a regression test when practical, confirm red before the fix, apply the smallest root-cause fix, confirm green, rerun the original reproduction, and run applicable project verification.
 
-Remove temporary diagnostics before completion. Do not weaken tests or requirements to make the symptom disappear.
+Before completion:
+
+- remove temporary diagnostic output and throwaway harnesses unless intentionally retained;
+- state the confirmed root cause and evidence;
+- record a materially new recurring failure in `troubleshooting-cases` when it provides reusable prevention value.
+
+Do not weaken tests, requirements, project verification, or security controls to make the symptom disappear.
