@@ -13,6 +13,7 @@
 ## Implementation / engineering
 
 - `implement`: readyなTaskを1件だけbranch → code → verification → review → PR → mergeまで進める。
+- `ponytail`: YAGNI / reuse / native-platform / root-causeの順で、要件を満たす最小の正しい実装を選ぶ。
 - `code-review`: requirementsとengineering qualityを分けてreviewする。
 - `codebase-design`: module boundary / interface / seamを設計する。
 - `tdd`: observable behaviorをred → greenで実装する。
