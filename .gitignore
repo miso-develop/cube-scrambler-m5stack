@@ -1,0 +1,20 @@
+# PlatformIO
+.pio/
+.platformio-core/
+
+# Python virtual environment
+.venv/
+
+# Local Wi-Fi credentials
+include/wifi_credentials.h
+
+# Local HTTPS CA and private keys
+local/https/
+
+# 
+.vscode/.browse_c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,100 @@
+name: Release Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Bundle version
+        required: true
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Build distributable NanoC6 image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Web Serial installer source
+        run: |
+          node --check tools/web_installer/installer.js
+          python -m py_compile tools/build_release_bundle.py
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.platformio/.cache
+          key: ${{ runner.os }}-platformio-release-${{ hashFiles('platformio.ini', 'boards/**') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install tooling
+        run: python -m pip install --disable-pip-version-check platformio==6.1.19 "cryptography>=45,<47"
+
+      - name: Generate Min2Phase table image
+        run: node tools/generate_min2phase_tables.js --output .pio/min2phase-tables.bin
+
+      - name: Generate pinned Web UI assets
+        run: |
+          node tools/generate_web_ui.js --output .pio/web-ui
+          node tools/finalize_web_bootstrap.js --web-dir .pio/web-ui
+
+      - name: Generate distribution HTTPS certificate
+        run: python tools/generate_https_cert.py --output-dir local/https --web-dir .pio/web-ui --hostname cube-scrambler.local
+
+      - name: Build credential-free release firmware
+        run: pio run -e m5stack-nanoc6-release
+
+      - name: Build release Web SPIFFS
+        run: pio run -e m5stack-nanoc6-release -t buildfs
+
+      - name: Validate final layout
+        run: >-
+          python tools/check_flash_layout.py
+          --firmware .pio/build/m5stack-nanoc6-release/firmware.bin
+          --web .pio/build/m5stack-nanoc6-release/spiffs.bin
+
+      - name: Build full-flash bundle
+        run: >-
+          python tools/build_release_bundle.py
+          --version "${{ inputs.version }}"
+
+      - name: Validate publishable Web Serial installer
+        run: |
+          test -f .pio/release/web-installer/index.html
+          test -f .pio/release/web-installer/installer.js
+          test -f .pio/release/web-installer/manifest.json
+          test -f .pio/release/web-installer/cube-scrambler-nanoc6-full.bin
+          test -f .pio/release/web-installer/ca.crt
+          node --check .pio/release/web-installer/installer.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('.pio/release/web-installer')
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['builds'][0]['chipFamily'] == 'ESP32-C6'
+          assert manifest['builds'][0]['parts'] == [{'path': 'cube-scrambler-nanoc6-full.bin', 'offset': 0}]
+          assert manifest['new_install_improv_wait_time'] == 0
+          assert (root / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
+          PY
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cube-scrambler-nanoc6-${{ inputs.version }}
+          path: .pio/release/
+          if-no-files-found: error
+          retention-days: 1

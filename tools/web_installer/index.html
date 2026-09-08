@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cube Scrambler NanoC6 Installer</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <script src="./installer.js" defer></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --fg: #262626;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --soft: #f3f4f6;
+      --ok: #166534;
+      --error: #b91c1c;
+      --accent: #374151;
+      --esp-tools-button-color: #374151;
+      --esp-tools-button-text-color: #fff;
+      --esp-tools-button-border-radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fff; color: var(--fg); font-family: system-ui, sans-serif; line-height: 1.5; }
+    main { width: min(680px, calc(100% - 32px)); margin: 48px auto 80px; }
+    h1 { margin: 0 0 8px; font-size: clamp(30px, 6vw, 44px); line-height: 1.1; }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .step { border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 16px 0; }
+    .step h2 { margin: 0 0 14px; font-size: 20px; }
+    .step-number { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; margin-right: 8px; border-radius: 50%; background: var(--soft); font-size: 14px; }
+    .field { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; margin: 10px 0; }
+    input, select, button { font: inherit; }
+    input, select { width: 100%; min-width: 0; padding: 10px 11px; border: 1px solid #9ca3af; border-radius: 8px; background: #fff; color: var(--fg); }
+    input:disabled { background: var(--soft); color: var(--muted); }
+    .check { display: flex; align-items: center; gap: 8px; color: var(--muted); margin: 10px 0 0 150px; }
+    .check input { width: auto; }
+    button, .button-link { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 650; text-decoration: none; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: default; }
+    .secondary { background: #fff; color: var(--accent); border: 1px solid #9ca3af; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .note { color: var(--muted); font-size: 13px; }
+    .status { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--soft); white-space: pre-wrap; font-size: 13px; min-height: 42px; }
+    .status.ok { color: var(--ok); background: #f0fdf4; }
+    .status.error { color: var(--error); background: #fef2f2; }
+    .log { max-height: 180px; overflow: auto; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .hidden { display: none !important; }
+    esp-web-install-button { display: block; margin-top: 12px; }
+    @media (max-width: 560px) {
+      main { margin-top: 28px; }
+      .field { grid-template-columns: 1fr; gap: 4px; }
+      .check { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Cube Scrambler</h1>
+  <p class="lead">M5Stack NanoC6 Web Installer</p>
+
+  <section class="step">
+    <h2><span class="step-number">1</span>Wi-Fi settings</h2>
+    <div class="field">
+      <label for="wifi-mode">Mode</label>
+      <select id="wifi-mode">
+        <option value="sta">Station</option>
+        <option value="ap">Access Point</option>
+      </select>
+    </div>
+    <div id="station-fields">
+      <div class="field">
+        <label for="wifi-ssid">SSID</label>
+        <input id="wifi-ssid" type="text" maxlength="32" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="wifi-password">Password</label>
+        <input id="wifi-password" type="password" maxlength="63" autocomplete="new-password">
+      </div>
+      <label class="check"><input id="open-network" type="checkbox"> Open network (no password)</label>
+    </div>
+    <p class="note">Credentials stay only in this browser page. They are not added to the firmware image or uploaded anywhere.</p>
+    <div id="wifi-validation" class="status">Enter the Wi-Fi settings that should be applied after flashing.</div>
+  </section>
+
+  <section class="step">
+    <h2><span class="step-number">2</span>Install firmware</h2>
+    <p>Connect the NanoC6 by USB, then install the complete Cube Scrambler image.</p>
+    <esp-web-install-button id="install-button" manifest="manifest.json">
+      <button slot="activate" type="button">Install Cube Scrambler</button>
+      <span slot="unsupported" class="note">This browser does not support Web Serial. Use a Chromium-based desktop browser.</span>
+      <span slot="not-allowed" class="note">Web Serial is unavailable in this page context. Use HTTPS, or localhost for local development.</span>
+    </esp-web-install-button>
+    <p class="note">After ESP Web Tools reports that installation is complete, close its dialog and continue below.</p>
+  </section>
+
+  <section class="step">
+    <h2><span class="step-number">3</span>Apply Wi-Fi settings</h2>
+    <p>Use the same USB-connected NanoC6. The browser will ask you to select its serial port again.</p>
+    <div class="actions">
+      <button id="configure-button" type="button">Configure Wi-Fi via USB</button>
+      <button id="clear-log-button" type="button" class="secondary">Clear log</button>
+    </div>
+    <div id="serial-status" class="status">Waiting for Wi-Fi configuration.</div>
+    <div id="serial-log" class="status log hidden" aria-live="polite"></div>
+  </section>
+
+  <section id="finish-step" class="step hidden">
+    <h2><span class="step-number">4</span>Finish</h2>
+    <p id="finish-message">Installation is complete.</p>
+    <div class="actions">
+      <a id="open-device-link" class="button-link" href="https://cube-scrambler.local/" target="_blank" rel="noopener">Open Cube Scrambler</a>
+      <a class="button-link secondary" href="./ca.crt" download>Download CA certificate</a>
+    </div>
+    <p class="note">The Cube Scrambler HTTPS page requires the bundled CA certificate to be trusted on the device that opens it.</p>
+  </section>
+</main>
+</body>
+</html>
