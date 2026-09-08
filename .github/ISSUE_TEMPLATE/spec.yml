@@ -1,61 +1,70 @@
 name: Loop Spec
-description: Define settled behavior before implementation tickets.
+description: Capture a settled feature specification before implementation tickets are created.
 title: "[Spec] "
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form after the important decisions are settled. Project-wide constraints belong in `PROJECT.md`; reference them instead of duplicating them.
   - type: textarea
     id: problem
     attributes:
       label: Problem
+      description: Describe the problem from the user or operator perspective.
     validations:
       required: true
   - type: textarea
     id: outcome
     attributes:
       label: Outcome
+      description: Describe the result that must be true when this Spec is complete.
     validations:
       required: true
   - type: textarea
     id: requirements
     attributes:
       label: Requirements
-      description: Observable requirements, one per bullet.
-      value: "- "
+      description: List observable requirements, one per bullet where practical.
+      placeholder: "- Requirement"
     validations:
       required: true
   - type: textarea
     id: decisions
     attributes:
       label: Decisions
-      value: "- "
+      description: Record only settled behavior or implementation decisions that materially constrain implementation.
+      placeholder: "- None beyond PROJECT.md"
     validations:
-      required: true
+      required: false
   - type: textarea
     id: verification
     attributes:
       label: Verification
-      description: Observable checks, tests, builds, or real-device evidence.
-      value: "- "
+      description: State the important observable checks or test seams for the completed feature.
+      placeholder: "- Verification condition"
     validations:
       required: true
   - type: textarea
-    id: out
+    id: out-of-scope
     attributes:
       label: Out of scope
-      value: "- None"
+      description: List behavior explicitly excluded from this Spec.
+      placeholder: "- None"
     validations:
-      required: true
+      required: false
   - type: textarea
     id: references
     attributes:
       label: References
+      description: Link relevant Map, Decision, architecture, or external references. Keep `PROJECT.md` as the project-wide charter.
       value: "- `PROJECT.md`"
     validations:
       required: true
   - type: textarea
-    id: tasks
+    id: implementation-tasks
     attributes:
       label: Implementation tasks
-      description: to-tickets updates this section after Task issues exist.
-      value: "- None yet"
+      description: `to-tickets` replaces this placeholder with the canonical Task index after decomposition.
+      value: "- Pending `to-tickets` decomposition."
     validations:
       required: true

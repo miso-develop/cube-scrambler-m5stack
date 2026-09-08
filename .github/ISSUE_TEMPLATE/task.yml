@@ -1,35 +1,39 @@
 name: Loop Task
-description: Implement one narrow vertical slice of a settled Spec.
+description: Create one vertical production implementation ticket under a settled Spec.
 title: "[Task] "
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form only for one implementation slice under an existing `[Spec]`. A Task should fit one implementation iteration and one coherent PR.
   - type: input
-    id: parent
+    id: parent-spec
     attributes:
       label: Parent spec
-      description: Same-repository issue reference, for example #20.
-      placeholder: "#20"
+      description: Reference the parent `[Spec]` Issue.
+      placeholder: "#123"
     validations:
       required: true
   - type: textarea
-    id: build
+    id: what-to-build
     attributes:
       label: What to build
-      description: One complete behavior for this ticket.
+      description: Describe the narrow end-to-end behavior delivered by this Task.
     validations:
       required: true
   - type: textarea
-    id: acceptance
+    id: acceptance-criteria
     attributes:
       label: Acceptance criteria
-      description: Observable completion criteria.
-      value: "- [ ] "
+      description: List externally observable completion criteria using checkboxes.
+      placeholder: "- [ ] Observable criterion"
     validations:
       required: true
   - type: textarea
-    id: blockers
+    id: blocked-by
     attributes:
       label: Blocked by
-      description: Use "- None" or one same-repository [Task] issue per line.
+      description: "List one prerequisite `[Task]` Issue per line using `- #123`, or keep `- None` when unblocked."
       value: "- None"
     validations:
       required: true
