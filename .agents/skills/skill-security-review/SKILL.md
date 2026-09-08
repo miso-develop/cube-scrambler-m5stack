@@ -18,10 +18,10 @@ Do not execute candidate scripts, install candidate dependencies, open candidate
 ## Procedure
 
 1. Record provenance: repository / publisher, exact revision/version, license, included files.
-2. Read the complete`SKILL.md` and enumerate referenced sibling files, scripts, assets, URLs, commands, packages, and secondary Skills.
+2. Read the complete `SKILL.md` and enumerate referenced sibling files, scripts, assets, URLs, commands, packages, and secondary Skills.
 3. Statically inspect all executable or instruction-bearing referenced content.
 4. Identify capabilities and data the Skill attempts to access.
-5. Classify findings by severity and recommend`accept`, `adapt`, or `reject`.
+5. Classify findings by severity and recommend `accept`, `adapt`, or `reject`.
 6. If adapting, retain only the minimum trusted behavior and preserve license / attribution requirements.
 
 ## Security checks
@@ -55,7 +55,7 @@ Do not execute candidate scripts, install candidate dependencies, open candidate
 
 ### Repository mutation
 
-- rewriting`AGENTS.md`, project verification/CI contracts, branch protection, workflow permissions, tests, or security controls without narrow justification
+- rewriting `AGENTS.md`, project verification/CI contracts, branch protection, workflow permissions, tests, or security controls without narrow justification
 - writes outside expected project scope
 - automatic commits, pushes, releases, or secret changes that are not explicit user-facing actions
 
