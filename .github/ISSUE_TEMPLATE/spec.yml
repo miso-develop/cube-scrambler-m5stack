@@ -1,11 +1,11 @@
 name: Loop Spec
-description: Capture a settled feature specification before implementation tickets are created.
+description: Capture a settled feature contract before implementation tickets are created.
 title: "[Spec] "
 body:
   - type: markdown
     attributes:
       value: |
-        Use this form after the important decisions are settled. Project-wide constraints belong in `PROJECT.md`; reference them instead of duplicating them.
+        Use this form after the important decisions are settled. Project-wide constraints belong in `PROJECT.md`; reference them instead of duplicating them. A Spec defines the contract; tests/checks/review are verification evidence for that contract.
   - type: textarea
     id: problem
     attributes:
@@ -40,7 +40,7 @@ body:
     id: verification
     attributes:
       label: Verification
-      description: State the important observable checks or test seams for the completed feature.
+      description: State the important observable checks, build/runtime checks, hardware evidence, or review seams for the completed feature.
       placeholder: "- Verification condition"
     validations:
       required: true
@@ -56,15 +56,23 @@ body:
     id: references
     attributes:
       label: References
-      description: Link relevant Map, Decision, architecture, or external references. Keep `PROJECT.md` as the project-wide charter.
+      description: Link relevant Map, Decision, current repository documentation, architecture, or external references. Keep `PROJECT.md` as the project-wide charter.
       value: "- `PROJECT.md`"
     validations:
       required: true
   - type: textarea
+    id: repository-knowledge
+    attributes:
+      label: Repository knowledge
+      description: Initial assessment of durable knowledge that may need to become repository current truth through code, configuration, documentation, or executable verification. Re-evaluate this at Spec closeout.
+      placeholder: "- None identified yet, or describe candidate durable knowledge"
+    validations:
+      required: false
+  - type: textarea
     id: implementation-tasks
     attributes:
       label: Implementation tasks
-      description: `to-tickets` replaces this placeholder with the canonical Task index after decomposition.
+      description: `to-tickets` replaces this placeholder with the canonical Task index after decomposition. Spec closeout also requires Requirements, verification, repository-knowledge promotion, and repository consistency to be complete.
       value: "- Pending `to-tickets` decomposition."
     validations:
       required: true
