@@ -76,7 +76,9 @@ jobs:
           node --check tools/generate_min2phase_tables.js
           node --check tools/generate_web_ui.js
           node --check tools/finalize_web_bootstrap.js
-          python -m py_compile tools/build_release_bundle.py tools/check_flash_layout.py tools/generate_https_cert.py
+          python -m py_compile tools/device_profiles.py tools/build_release_bundle.py tools/check_flash_layout.py tools/generate_https_cert.py tools/test_device_profiles.py tools/test_profile_driven_release.py
+          python tools/test_device_profiles.py
+          python tools/test_profile_driven_release.py
 
       - name: Generate Min2Phase table image
         run: node tools/generate_min2phase_tables.js --output .pio/min2phase-tables.bin
@@ -98,11 +100,12 @@ jobs:
       - name: Validate final flash layout
         run: >-
           python tools/check_flash_layout.py
+          --device m5stack-nanoc6
           --firmware .pio/build/m5stack-nanoc6-release/firmware.bin
           --web .pio/build/m5stack-nanoc6-release/spiffs.bin
 
       - name: Build full-flash release bundle
-        run: python tools/build_release_bundle.py --version ci
+        run: python tools/build_release_bundle.py --device m5stack-nanoc6 --version ci
 
       - name: Validate release bundle
         run: |
@@ -118,9 +121,12 @@ jobs:
           root = Path('.pio/release')
           manifest = json.loads((root / 'web-installer' / 'manifest.json').read_text(encoding='utf-8'))
           release = json.loads((root / 'release.json').read_text(encoding='utf-8'))
+          assert manifest['name'] == 'Cube Scrambler NanoC6'
           assert manifest['builds'][0]['chipFamily'] == 'ESP32-C6'
           assert manifest['builds'][0]['parts'] == [{'path': 'cube-scrambler-nanoc6-full.bin', 'offset': 0}]
           assert manifest['new_install_improv_wait_time'] == 0
           assert (root / 'web-installer' / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
+          assert release['name'] == 'Cube Scrambler NanoC6'
+          assert release['deviceId'] == 'm5stack-nanoc6'
           assert release['repository'] == 'https://github.com/miso-develop/cube-scrambler-m5stack'
           PY

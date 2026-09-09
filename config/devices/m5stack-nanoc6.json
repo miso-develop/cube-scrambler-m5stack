@@ -9,6 +9,7 @@
   },
   "partitionFile": "partitions/cube_scrambler_4mb.csv",
   "release": {
+    "name": "Cube Scrambler NanoC6",
     "fullImage": "cube-scrambler-nanoc6-full.bin"
   },
   "parts": [

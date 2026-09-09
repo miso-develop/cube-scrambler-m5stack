@@ -42,6 +42,7 @@ class DeviceProfile:
     flash_size: int
     platformio_release_env: str
     partition_file: str
+    release_name: str
     full_image: str
     parts: tuple[FlashPart, ...]
 
@@ -165,7 +166,8 @@ def parse_device_profile(data: Any, *, expected_id: str | None = None) -> Device
     partition_file = _require_repo_relative_path(root["partitionFile"], "partitionFile")
 
     release = _require_object(root["release"], "release")
-    _require_exact_keys(release, "release", {"fullImage"})
+    _require_exact_keys(release, "release", {"name", "fullImage"})
+    release_name = _require_string(release["name"], "release.name")
     full_image = _require_filename(release["fullImage"], "release.fullImage", suffix=".bin")
 
     raw_parts = root["parts"]
@@ -224,6 +226,7 @@ def parse_device_profile(data: Any, *, expected_id: str | None = None) -> Device
         flash_size=flash_size,
         platformio_release_env=release_env,
         partition_file=partition_file,
+        release_name=release_name,
         full_image=full_image,
         parts=tuple(parts),
     )
