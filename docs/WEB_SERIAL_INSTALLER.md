@@ -40,7 +40,7 @@ USB VID/PID、serial-port label、ESP chip family、runtime board detectionか�
 | M5Stack NanoC6 | `ESP32-C6` | `cube-scrambler-nanoc6-full.bin` |
 | M5Stack AtomS3 Lite | `ESP32-S3` | `cube-scrambler-atoms3-lite-full.bin` |
 
-AtomS3 Liteのinstaller/release contractは実装対象だが、real-hardware support gate (#27) が完了するまではbuild/installer生成成功だけでsupportedとは扱わない。
+AtomS3 Liteのinstaller/release contractはHosted CIでもfull bundleまで検証するが、real-hardware support gate (#27) が完了するまではbuild/installer生成成功だけでsupportedとは扱わない。
 
 ## Installation flow
 
@@ -108,7 +108,16 @@ scripts\build-release-bundle.cmd dev m5stack-atoms3-lite
 .pio\release\web-installer\
 ```
 
-複数deviceのrelease artifactを同時に生成・保持するHosted release workflowは#26で扱う。
+## Hosted release bundle
+
+`.github/workflows/release-bundle.yml`をmanual dispatchし、`device` choiceで対象を明示する。
+
+- `m5stack-nanoc6`
+- `m5stack-atoms3-lite`
+
+workflowは選択した1deviceだけをbuildし、profile/partition/full-image/manifest/installer contractを独立baselineで検証してからartifactへ格納する。artifact retentionは1日。2機種を1つのinstaller artifactへ混在させたり、自動model detectionで選択したりしない。
+
+通常の`.github/workflows/firmware-build.yml`ではNanoC6 / AtomS3 Lite双方について同じfull release-contract検証を実施するが、artifact publicationは行わない。
 
 ## Serve locally
 
@@ -150,4 +159,4 @@ AtomS3 Liteの完全なsupport evidenceはIssue #27で管理する。
 
 `.pio/release/web-installer/` はstatic filesだけで構成されるため、GitHub Pages等のHTTPS static hostingへ配置できる。
 
-Source buildを公開hostingと分離したい場合でも、installer directoryだけをartifactまたは別branchへpublishできる。
+Source buildを公開hostingと分離する場合でも、明示選択したdeviceのinstaller directoryだけをartifactまたは別branchへpublishする。
