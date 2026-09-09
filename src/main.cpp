@@ -5,7 +5,7 @@
 #include "esp_chip_info.h"
 #include "esp_heap_caps.h"
 
-#include "Hardware/NanoC6Controls.h"
+#include "Hardware/HardwareControls.h"
 #include "Move/MoveManager.h"
 #include "Network/WifiSettings.h"
 #include "Robot/CubeRobot.h"
@@ -25,7 +25,7 @@ solver::Min2PhaseSolver min2phaseSolver;
 web::CubeHttpServer cubeHttpServer;
 robot::CubeRobot cubeRobot;
 move::MoveManager moveManager(cubeRobot);
-hardware::NanoC6Controls nanoC6Controls(moveManager);
+hardware::HardwareControls hardwareControls(moveManager);
 sequence::SequenceGenerator sequenceGenerator(min2phaseSolver);
 bool realTablesReady = false;
 char serialCommandBuffer[kSerialCommandBufferSize]{};
@@ -54,7 +54,7 @@ void printSystemInfo() {
   esp_chip_info(&chipInfo);
 
   Serial.println();
-  Serial.println("Cube Scrambler NanoC6");
+  Serial.printf("Cube Scrambler %s\n", hardware::HardwareControls::deviceName());
   Serial.printf("Chip model: %s\n", ESP.getChipModel());
   Serial.printf("CPU frequency: %u MHz\n", ESP.getCpuFreqMHz());
   Serial.printf("Flash size: %u bytes\n", ESP.getFlashChipSize());
@@ -103,7 +103,7 @@ void printHelp() {
   Serial.println("  wifi-mode sta|ap        Persist Wi-Fi mode; reboot required");
   Serial.println("  wifi-set <ssid>|<pass>  Persist station credentials; use empty pass for open Wi-Fi");
   Serial.println("  wifi-clear              Remove stored station credentials");
-  Serial.println("  reboot                  Restart NanoC6 when runner is idle");
+  Serial.println("  reboot                  Restart device when runner is idle");
   Serial.println("  move-self-test          Test parser/converter without servo movement");
   Serial.println("  move-convert <sequence> Convert Cube notation to robot moves");
   Serial.println("  move-start <sequence>   Start async sequence worker");
@@ -476,7 +476,7 @@ void setup() {
   Serial.begin(kSerialBaud);
   // USB Serial is diagnostic-only. Do not wait for a host connection: normal
   // appliance startup must proceed immediately when powered without a PC.
-  nanoC6Controls.begin(&Serial);
+  hardwareControls.begin(&Serial);
   printSystemInfo();
 
   if (solverTableStorage.begin(Serial)) {
@@ -495,7 +495,7 @@ void setup() {
 
 void loop() {
   cubeHttpServer.handleClient();
-  nanoC6Controls.poll(&Serial);
+  hardwareControls.poll(&Serial);
   pollSerialCommands();
   delay(1);
 }
