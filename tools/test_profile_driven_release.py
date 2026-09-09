@@ -18,9 +18,21 @@ class ProfileDrivenReleaseTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.profile = load_device_profile(device_id="m5stack-nanoc6")
         cls.partitions = load_partitions(Path(cls.profile.partition_file))
+        cls.atoms3_lite_profile = load_device_profile(
+            device_id="m5stack-atoms3-lite"
+        )
+        cls.atoms3_lite_partitions = load_partitions(
+            Path(cls.atoms3_lite_profile.partition_file)
+        )
 
     def test_partition_contract_matches_nanoc6_profile(self) -> None:
         check_profile_partition_contract(self.partitions, self.profile)
+
+    def test_partition_contract_matches_atoms3_lite_profile(self) -> None:
+        check_profile_partition_contract(
+            self.atoms3_lite_partitions,
+            self.atoms3_lite_profile,
+        )
 
     def test_partition_contract_rejects_profile_drift(self) -> None:
         data = self._profile_dict()
@@ -29,6 +41,13 @@ class ProfileDrivenReleaseTest(unittest.TestCase):
         drifted = parse_device_profile(data)
         with self.assertRaisesRegex(ValueError, "does not match profile part solver"):
             check_profile_partition_contract(self.partitions, drifted)
+
+    def test_atoms3_lite_partition_contract_rejects_layout_drift(self) -> None:
+        drifted = copy.deepcopy(self.atoms3_lite_partitions)
+        solver = next(part for part in drifted if part["name"] == "solver")
+        solver["size"] = int(solver["size"]) - 0x1000
+        with self.assertRaisesRegex(ValueError, "does not match profile part solver"):
+            check_profile_partition_contract(drifted, self.atoms3_lite_profile)
 
     def test_source_preflight_rejects_oversized_image(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
