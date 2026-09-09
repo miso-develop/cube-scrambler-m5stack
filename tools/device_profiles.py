@@ -44,6 +44,8 @@ class DeviceProfile:
     partition_file: str
     release_name: str
     full_image: str
+    installer_serial_label: str
+    installer_recovery_guidance: str | None
     parts: tuple[FlashPart, ...]
 
     def part(self, name: str) -> FlashPart:
@@ -85,6 +87,19 @@ def _require_string(value: Any, field: str) -> str:
     if value != value.strip():
         raise DeviceProfileError(f"{field} must not have surrounding whitespace")
     return value
+
+
+def _require_single_line_string(value: Any, field: str) -> str:
+    text = _require_string(value, field)
+    if "\r" in text or "\n" in text:
+        raise DeviceProfileError(f"{field} must be a single-line string")
+    return text
+
+
+def _require_optional_single_line_string(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    return _require_single_line_string(value, field)
 
 
 def _require_int(value: Any, field: str, *, minimum: int = 0) -> int:
@@ -138,6 +153,7 @@ def parse_device_profile(data: Any, *, expected_id: str | None = None) -> Device
             "platformio",
             "partitionFile",
             "release",
+            "installer",
             "parts",
         },
     )
@@ -169,6 +185,15 @@ def parse_device_profile(data: Any, *, expected_id: str | None = None) -> Device
     _require_exact_keys(release, "release", {"name", "fullImage"})
     release_name = _require_string(release["name"], "release.name")
     full_image = _require_filename(release["fullImage"], "release.fullImage", suffix=".bin")
+
+    installer = _require_object(root["installer"], "installer")
+    _require_exact_keys(installer, "installer", {"serialLabel", "recoveryGuidance"})
+    installer_serial_label = _require_single_line_string(
+        installer["serialLabel"], "installer.serialLabel"
+    )
+    installer_recovery_guidance = _require_optional_single_line_string(
+        installer["recoveryGuidance"], "installer.recoveryGuidance"
+    )
 
     raw_parts = root["parts"]
     if not isinstance(raw_parts, list) or not raw_parts:
@@ -228,6 +253,8 @@ def parse_device_profile(data: Any, *, expected_id: str | None = None) -> Device
         partition_file=partition_file,
         release_name=release_name,
         full_image=full_image,
+        installer_serial_label=installer_serial_label,
+        installer_recovery_guidance=installer_recovery_guidance,
         parts=tuple(parts),
     )
 
