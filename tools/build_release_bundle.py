@@ -8,18 +8,19 @@ import os
 import shutil
 from pathlib import Path
 
-FLASH_SIZE = 0x400000
+from check_flash_layout import check_profile_partition_contract, load_partitions
+from device_profiles import DeviceProfile, DeviceProfileError, load_device_profile
+
 WEB_INSTALLER_SOURCE = Path("tools/web_installer")
-# label, offset, exclusive limit, destination filename
-PARTS = (
-    ("bootloader", 0x000000, 0x008000, "bootloader.bin"),
-    ("partitions", 0x008000, 0x009000, "partitions.bin"),
-    ("boot_app0", 0x00E000, 0x010000, "boot_app0.bin"),
-    ("firmware", 0x010000, 0x160000, "firmware.bin"),
-    ("solver", 0x2B0000, 0x3C0000, "solver.bin"),
-    ("web", 0x3C0000, 0x400000, "web.bin"),
-)
 DEFAULT_REPOSITORY = "https://github.com/miso-develop/cube-scrambler-m5stack"
+_REQUIRED_BUNDLE_PARTS = {
+    "bootloader",
+    "partitions",
+    "boot_app0",
+    "firmware",
+    "solver",
+    "web",
+}
 
 
 def sha256(path: Path) -> str:
@@ -42,7 +43,9 @@ def locate_boot_app0(explicit: Path | None) -> Path:
         roots.append(Path(core_dir))
     roots.extend([Path(".platformio-core"), Path.home() / ".platformio"])
 
-    relative = Path("packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin")
+    relative = Path(
+        "packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
+    )
     for root in roots:
         candidate = root / relative
         if candidate.is_file():
@@ -51,6 +54,39 @@ def locate_boot_app0(explicit: Path | None) -> Path:
     raise FileNotFoundError(
         "boot_app0.bin was not found. Set PLATFORMIO_CORE_DIR or pass --boot-app0."
     )
+
+
+def validate_bundle_profile(profile: DeviceProfile) -> None:
+    names = {part.name for part in profile.parts}
+    missing = sorted(_REQUIRED_BUNDLE_PARTS - names)
+    unsupported = sorted(names - _REQUIRED_BUNDLE_PARTS)
+    if missing:
+        raise ValueError(
+            "profile missing flash parts required by release bundling: "
+            + ", ".join(missing)
+        )
+    if unsupported:
+        raise ValueError(
+            "profile contains flash parts unsupported by release bundling: "
+            + ", ".join(unsupported)
+        )
+
+
+def validate_sources(
+    profile: DeviceProfile,
+    sources: dict[str, Path],
+) -> None:
+    for part in profile.parts:
+        source = sources[part.name]
+        if not source.is_file():
+            raise FileNotFoundError(f"{part.name} image not found: {source}")
+        size = source.stat().st_size
+        capacity = part.limit - part.offset
+        if size > capacity:
+            raise ValueError(
+                f"{part.name}: {size} bytes exceeds reserved capacity "
+                f"{capacity} bytes for 0x{part.offset:X}-0x{part.limit:X}"
+            )
 
 
 def place(
@@ -84,6 +120,7 @@ def write_web_installer(
     merged: Path,
     version: str,
     ca_cert: Path,
+    profile: DeviceProfile,
 ) -> Path:
     if not WEB_INSTALLER_SOURCE.is_dir():
         raise FileNotFoundError(
@@ -103,17 +140,14 @@ def write_web_installer(
     shutil.copy2(merged, web_output / merged.name)
     shutil.copy2(ca_cert, web_output / "ca.crt")
 
-    # Wi-Fi provisioning is intentionally handled by installer.js after the
-    # flash finishes. The firmware does not implement Improv Serial, so disable
-    # ESP Web Tools' post-install Improv wait.
     manifest = {
-        "name": "Cube Scrambler NanoC6",
+        "name": f"Cube Scrambler {profile.display_name}",
         "version": version,
         "new_install_prompt_erase": False,
         "new_install_improv_wait_time": 0,
         "builds": [
             {
-                "chipFamily": "ESP32-C6",
+                "chipFamily": profile.chip_family,
                 "improv": False,
                 "parts": [{"path": merged.name, "offset": 0}],
             }
@@ -125,23 +159,31 @@ def write_web_installer(
     return web_output
 
 
+def _legacy_m5burner_filename(merged: Path) -> str:
+    stem = merged.stem
+    if stem.endswith("-full"):
+        stem = stem[: -len("-full")]
+    return stem.replace("-", "_") + "_0x0.bin"
+
+
 def write_m5burner_metadata(
-    output: Path, version: str, repository: str
+    output: Path,
+    merged: Path,
+    profile: DeviceProfile,
+    version: str,
+    repository: str,
 ) -> None:
     # Kept as existing deferred tooling. The current distribution target is the
     # Web Serial installer under web-installer/.
     package = output / "m5burner"
     firmware_dir = package / "firmware"
     firmware_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(
-        output / "cube-scrambler-nanoc6-full.bin",
-        firmware_dir / "cube_scrambler_nanoc6_0x0.bin",
-    )
+    shutil.copy2(merged, firmware_dir / _legacy_m5burner_filename(merged))
 
     metadata = {
-        "name": "Cube Scrambler NanoC6",
-        "description": "Standalone Cube Scrambler firmware for M5Stack NanoC6",
-        "keywords": "ESP32-C6,M5Stack,NanoC6,Rubik's Cube",
+        "name": f"Cube Scrambler {profile.display_name}",
+        "description": f"Standalone Cube Scrambler firmware for {profile.display_name}",
+        "keywords": f"{profile.chip_family},M5Stack,Rubik's Cube",
         "author": "miso-develop",
         "repository": repository,
         "version": version,
@@ -153,75 +195,83 @@ def write_m5burner_metadata(
     )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Build a distributable Cube Scrambler NanoC6 full-flash bundle"
-    )
-    parser.add_argument(
-        "--build-dir",
-        type=Path,
-        default=Path(".pio/build/m5stack-nanoc6-release"),
-    )
-    parser.add_argument(
-        "--solver", type=Path, default=Path(".pio/min2phase-tables.bin")
-    )
-    parser.add_argument(
-        "--web",
-        type=Path,
-        default=Path(".pio/build/m5stack-nanoc6-release/spiffs.bin"),
-    )
-    parser.add_argument(
-        "--ca-cert", type=Path, default=Path(".pio/web-ui/ca.crt")
-    )
-    parser.add_argument("--boot-app0", type=Path, default=None)
-    parser.add_argument("--output", type=Path, default=Path(".pio/release"))
-    parser.add_argument("--version", default="dev")
-    parser.add_argument("--repository", default=DEFAULT_REPOSITORY)
-    args = parser.parse_args()
+def _profile_args(parser: argparse.ArgumentParser) -> None:
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--device")
+    selection.add_argument("--profile", type=Path)
+
+
+def _load_selected_profile(args: argparse.Namespace) -> DeviceProfile:
+    if args.device is not None:
+        return load_device_profile(device_id=args.device)
+    return load_device_profile(profile_path=args.profile)
+
+
+def build_bundle(
+    *,
+    profile: DeviceProfile,
+    build_dir: Path,
+    solver: Path,
+    web: Path,
+    ca_cert: Path,
+    boot_app0: Path | None,
+    output: Path,
+    version: str,
+    repository: str,
+) -> Path:
+    validate_bundle_profile(profile)
+
+    partitions = load_partitions(Path(profile.partition_file))
+    check_profile_partition_contract(partitions, profile)
 
     sources = {
-        "bootloader": args.build_dir / "bootloader.bin",
-        "partitions": args.build_dir / "partitions.bin",
-        "boot_app0": locate_boot_app0(args.boot_app0),
-        "firmware": args.build_dir / "firmware.bin",
-        "solver": args.solver,
-        "web": args.web,
+        "bootloader": build_dir / "bootloader.bin",
+        "partitions": build_dir / "partitions.bin",
+        "boot_app0": locate_boot_app0(boot_app0),
+        "firmware": build_dir / "firmware.bin",
+        "solver": solver,
+        "web": web,
     }
-    for label, path in sources.items():
-        if not path.is_file():
-            raise FileNotFoundError(f"{label} image not found: {path}")
+    validate_sources(profile, sources)
+    if not ca_cert.is_file():
+        raise FileNotFoundError(f"CA certificate not found: {ca_cert}")
 
-    output = args.output
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
 
-    image = bytearray(b"\xFF" * FLASH_SIZE)
+    image = bytearray(b"\xFF" * profile.flash_size)
     part_records: list[dict[str, object]] = []
-    for label, offset, limit, destination_name in PARTS:
-        source = sources[label]
-        record = place(image, offset, limit, source, label)
+    for part in profile.parts:
+        source = sources[part.name]
+        record = place(image, part.offset, part.limit, source, part.name)
         part_records.append(record)
-        shutil.copy2(source, output / destination_name)
+        shutil.copy2(source, output / part.destination)
 
-    merged = output / "cube-scrambler-nanoc6-full.bin"
+    merged = output / profile.full_image
     merged.write_bytes(image)
-    if merged.stat().st_size != FLASH_SIZE:
-        raise RuntimeError("merged image is not exactly 4 MiB")
+    if merged.stat().st_size != profile.flash_size:
+        raise RuntimeError(
+            f"merged image is not exactly declared flash size {profile.flash_size}"
+        )
 
     web_installer = write_web_installer(
         output=output,
         merged=merged,
-        version=args.version,
-        ca_cert=args.ca_cert,
+        version=version,
+        ca_cert=ca_cert,
+        profile=profile,
     )
-    write_m5burner_metadata(output, args.version, args.repository)
+    write_m5burner_metadata(output, merged, profile, version, repository)
 
     release_info = {
-        "name": "Cube Scrambler NanoC6",
-        "version": args.version,
-        "repository": args.repository,
-        "flashSize": FLASH_SIZE,
+        "name": f"Cube Scrambler {profile.display_name}",
+        "deviceId": profile.id,
+        "version": version,
+        "repository": repository,
+        "flashSize": profile.flash_size,
+        "platformioReleaseEnv": profile.platformio_release_env,
+        "partitionFile": profile.partition_file,
         "mergedImage": {
             "path": merged.name,
             "size": merged.stat().st_size,
@@ -244,6 +294,7 @@ def main() -> int:
     )
 
     print(f"Release bundle: {output}")
+    print(f"Device: {profile.id} ({profile.display_name})")
     print(f"Merged image: {merged} ({merged.stat().st_size} bytes)")
     print(f"SHA256: {sha256(merged)}")
     print(f"Publishable Web Serial installer: {web_installer}")
@@ -252,6 +303,48 @@ def main() -> int:
             f"  {part['name']:<10} offset=0x{int(part['offset']):06X} "
             f"size={part['size']} free={part['free']}"
         )
+    return merged
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Build a distributable Cube Scrambler device full-flash bundle"
+    )
+    _profile_args(parser)
+    parser.add_argument("--build-dir", type=Path, default=None)
+    parser.add_argument(
+        "--solver", type=Path, default=Path(".pio/min2phase-tables.bin")
+    )
+    parser.add_argument("--web", type=Path, default=None)
+    parser.add_argument(
+        "--ca-cert", type=Path, default=Path(".pio/web-ui/ca.crt")
+    )
+    parser.add_argument("--boot-app0", type=Path, default=None)
+    parser.add_argument("--output", type=Path, default=Path(".pio/release"))
+    parser.add_argument("--version", default="dev")
+    parser.add_argument("--repository", default=DEFAULT_REPOSITORY)
+    args = parser.parse_args()
+
+    try:
+        profile = _load_selected_profile(args)
+        build_dir = args.build_dir or (
+            Path(".pio") / "build" / profile.platformio_release_env
+        )
+        web = args.web or build_dir / "spiffs.bin"
+        build_bundle(
+            profile=profile,
+            build_dir=build_dir,
+            solver=args.solver,
+            web=web,
+            ca_cert=args.ca_cert,
+            boot_app0=args.boot_app0,
+            output=args.output,
+            version=args.version,
+            repository=args.repository,
+        )
+    except (DeviceProfileError, OSError, RuntimeError, ValueError) as exc:
+        print(f"RELEASE BUNDLE: FAIL: {exc}")
+        return 1
     return 0
 
 
