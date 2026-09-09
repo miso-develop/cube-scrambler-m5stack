@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Cube Scrambler NanoC6 Installer</title>
+  <title>Cube Scrambler __CUBE_DEVICE_DISPLAY_NAME__ Installer</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <script src="./installer.js" defer></script>
   <style>
@@ -55,7 +55,7 @@
 <body>
 <main>
   <h1>Cube Scrambler</h1>
-  <p class="lead">M5Stack NanoC6 Web Installer</p>
+  <p class="lead">__CUBE_DEVICE_DISPLAY_NAME__ Web Installer</p>
 
   <section class="step">
     <h2><span class="step-number">1</span>Wi-Fi settings</h2>
@@ -83,18 +83,20 @@
 
   <section class="step">
     <h2><span class="step-number">2</span>Install firmware</h2>
-    <p>Connect the NanoC6 by USB, then install the complete Cube Scrambler image.</p>
+    <p>Connect the __CUBE_DEVICE_SERIAL_LABEL_HTML__ by USB, then install the complete Cube Scrambler image.</p>
+    <p class="note">Target: <strong>__CUBE_DEVICE_DISPLAY_NAME__</strong>. Full image: <code>__CUBE_FULL_IMAGE__</code>. This per-device installer does not auto-detect another M5Stack model.</p>
     <esp-web-install-button id="install-button" manifest="manifest.json">
       <button slot="activate" type="button">Install Cube Scrambler</button>
       <span slot="unsupported" class="note">This browser does not support Web Serial. Use a Chromium-based desktop browser.</span>
       <span slot="not-allowed" class="note">Web Serial is unavailable in this page context. Use HTTPS, or localhost for local development.</span>
     </esp-web-install-button>
+    <p class="note __CUBE_RECOVERY_CLASS__">__CUBE_RECOVERY_GUIDANCE__</p>
     <p class="note">After ESP Web Tools reports that installation is complete, close its dialog and continue below.</p>
   </section>
 
   <section class="step">
     <h2><span class="step-number">3</span>Apply Wi-Fi settings</h2>
-    <p>Use the same USB-connected NanoC6. The browser will ask you to select its serial port again.</p>
+    <p>Use the same USB-connected __CUBE_DEVICE_SERIAL_LABEL_HTML__. The browser will ask you to select its serial port again.</p>
     <div class="actions">
       <button id="configure-button" type="button">Configure Wi-Fi via USB</button>
       <button id="clear-log-button" type="button" class="secondary">Clear log</button>

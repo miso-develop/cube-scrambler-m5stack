@@ -12,6 +12,10 @@
     "name": "Cube Scrambler NanoC6",
     "fullImage": "cube-scrambler-nanoc6-full.bin"
   },
+  "installer": {
+    "serialLabel": "NanoC6",
+    "recoveryGuidance": null
+  },
   "parts": [
     {
       "name": "bootloader",

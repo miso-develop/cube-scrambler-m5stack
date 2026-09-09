@@ -30,6 +30,8 @@ class DeviceProfilesTest(unittest.TestCase):
         self.assertEqual(
             self.nanoc6.full_image, "cube-scrambler-nanoc6-full.bin"
         )
+        self.assertEqual(self.nanoc6.installer_serial_label, "NanoC6")
+        self.assertIsNone(self.nanoc6.installer_recovery_guidance)
         self.assertEqual(self.nanoc6.part("solver").offset, 0x2B0000)
         self.assertEqual(self.nanoc6.part("web").offset, 0x3C0000)
         self.assertEqual(self.nanoc6.part("web").limit, 0x400000)
@@ -51,6 +53,9 @@ class DeviceProfilesTest(unittest.TestCase):
             self.atoms3_lite.full_image,
             "cube-scrambler-atoms3-lite-full.bin",
         )
+        self.assertEqual(self.atoms3_lite.installer_serial_label, "AtomS3 Lite")
+        self.assertIn("2 seconds", self.atoms3_lite.installer_recovery_guidance or "")
+        self.assertIn("green LED", self.atoms3_lite.installer_recovery_guidance or "")
         self.assertEqual(self.atoms3_lite.part("firmware").offset, 0x10000)
         self.assertEqual(self.atoms3_lite.part("firmware").limit, 0x290000)
         self.assertEqual(self.atoms3_lite.part("solver").offset, 0x510000)
@@ -74,10 +79,34 @@ class DeviceProfilesTest(unittest.TestCase):
         with self.assertRaisesRegex(DeviceProfileError, "missing required fields"):
             parse_device_profile(data)
 
+    def test_missing_installer_metadata_is_rejected(self) -> None:
+        data = self._profile_dict()
+        del data["installer"]
+        with self.assertRaisesRegex(DeviceProfileError, "missing required fields"):
+            parse_device_profile(data)
+
     def test_unknown_field_is_rejected(self) -> None:
         data = self._profile_dict()
         data["futureGuess"] = True
         with self.assertRaisesRegex(DeviceProfileError, "unsupported fields"):
+            parse_device_profile(data)
+
+    def test_unknown_installer_field_is_rejected(self) -> None:
+        data = self._profile_dict()
+        data["installer"]["autoDetectUsbModel"] = True
+        with self.assertRaisesRegex(DeviceProfileError, "unsupported fields"):
+            parse_device_profile(data)
+
+    def test_multiline_installer_serial_label_is_rejected(self) -> None:
+        data = self._profile_dict()
+        data["installer"]["serialLabel"] = "NanoC6\nESP32-C6"
+        with self.assertRaisesRegex(DeviceProfileError, "single-line string"):
+            parse_device_profile(data)
+
+    def test_empty_recovery_guidance_is_rejected(self) -> None:
+        data = self._profile_dict()
+        data["installer"]["recoveryGuidance"] = ""
+        with self.assertRaisesRegex(DeviceProfileError, "non-empty string"):
             parse_device_profile(data)
 
     def test_overlapping_parts_are_rejected(self) -> None:
