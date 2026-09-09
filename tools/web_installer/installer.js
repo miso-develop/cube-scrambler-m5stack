@@ -3,6 +3,7 @@
 (() => {
   const BAUD_RATE = 115200;
   const COMMAND_TIMEOUT_MS = 6000;
+  const DEVICE_SERIAL_LABEL = "__CUBE_DEVICE_SERIAL_LABEL_JS__";
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -157,7 +158,7 @@
         reject,
         timer: setTimeout(() => {
           waiters = waiters.filter((item) => item !== waiter);
-          reject(new Error("Timed out waiting for the NanoC6 response."));
+          reject(new Error(`Timed out waiting for the ${DEVICE_SERIAL_LABEL} response.`));
         }, timeoutMs),
       };
       waiters.push(waiter);
@@ -210,10 +211,10 @@
 
   function showFinish(settings) {
     if (settings.mode === "ap") {
-      finishMessage.textContent = "Wi-Fi configuration was saved and the NanoC6 rebooted in Access Point mode. Connect to the CubeScrambler access point, then open 192.168.4.1.";
+      finishMessage.textContent = `Wi-Fi configuration was saved and the ${DEVICE_SERIAL_LABEL} rebooted in Access Point mode. Connect to the CubeScrambler access point, then open 192.168.4.1.`;
       openDeviceLink.href = "https://192.168.4.1/";
     } else {
-      finishMessage.textContent = `Wi-Fi configuration for “${settings.ssid}” was saved and the NanoC6 rebooted in Station mode. If Station connection fails, the firmware automatically falls back to Access Point mode.`;
+      finishMessage.textContent = `Wi-Fi configuration for “${settings.ssid}” was saved and the ${DEVICE_SERIAL_LABEL} rebooted in Station mode. If Station connection fails, the firmware automatically falls back to Access Point mode.`;
       openDeviceLink.href = "https://cube-scrambler.local/";
     }
     finishStep.classList.remove("hidden");
@@ -238,11 +239,11 @@
     finishStep.classList.add("hidden");
     serialLog.textContent = "";
     serialLog.classList.remove("hidden");
-    setStatus(serialStatus, "Select the NanoC6 serial port. Waiting for USB connection…");
+    setStatus(serialStatus, `Select the ${DEVICE_SERIAL_LABEL} serial port. Waiting for USB connection…`);
 
     try {
       await openSerial();
-      setStatus(serialStatus, "NanoC6 connected. Applying Wi-Fi settings…");
+      setStatus(serialStatus, `${DEVICE_SERIAL_LABEL} connected. Applying Wi-Fi settings…`);
 
       if (settings.mode === "sta") {
         await sendAndExpect(
@@ -263,7 +264,7 @@
         );
       }
 
-      setStatus(serialStatus, "Wi-Fi settings saved. Rebooting NanoC6…", "ok");
+      setStatus(serialStatus, `Wi-Fi settings saved. Rebooting ${DEVICE_SERIAL_LABEL}…`, "ok");
       await sendWithoutWaiting("reboot", "reboot");
       await new Promise((resolve) => setTimeout(resolve, 350));
 
