@@ -143,3 +143,79 @@ jobs:
           assert parts['web']['offset'] == 0x3C0000
           assert parts['web']['limit'] == 0x400000
           PY
+
+  atoms3_lite_build_feasibility:
+    name: AtomS3 Lite build feasibility (not support)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CUBE_DEVICE: m5stack-atoms3-lite
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.node-version'
+          package-manager-cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio/.cache
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/**', 'config/devices/**') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install tooling
+        run: python -m pip install --disable-pip-version-check platformio==6.1.19 "cryptography>=45,<47"
+
+      - name: Generate Min2Phase table image
+        run: node tools/generate_min2phase_tables.js --output .pio/min2phase-tables.bin
+
+      - name: Generate pinned Web UI assets
+        run: |
+          node tools/generate_web_ui.js --output .pio/web-ui
+          node tools/finalize_web_bootstrap.js --web-dir .pio/web-ui
+
+      - name: Generate distribution HTTPS certificate
+        run: python tools/generate_https_cert.py --output-dir local/https --web-dir .pio/web-ui --hostname cube-scrambler.local
+
+      - name: Build AtomS3 Lite credential-free firmware
+        run: pio run -e m5stack-atoms3-lite-release
+
+      - name: Build AtomS3 Lite Web SPIFFS
+        run: pio run -e m5stack-atoms3-lite-release -t buildfs
+
+      - name: Validate AtomS3 Lite 8 MiB layout
+        run: python tools/check_flash_layout.py --device "$CUBE_DEVICE"
+
+      - name: Record build-feasibility evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          build = Path('.pio/build/m5stack-atoms3-lite-release')
+          firmware = build / 'firmware.bin'
+          solver = Path('.pio/min2phase-tables.bin')
+          web = build / 'spiffs.bin'
+
+          assert firmware.stat().st_size <= 0x280000
+          assert solver.stat().st_size <= 0x180000
+          assert web.stat().st_size <= 0x170000
+
+          print(f'AtomS3 Lite firmware: {firmware.stat().st_size} bytes / {0x280000} bytes')
+          print(f'AtomS3 Lite solver image: {solver.stat().st_size} bytes / {0x180000} bytes')
+          print(f'AtomS3 Lite Web SPIFFS: {web.stat().st_size} bytes / {0x170000} bytes')
+          print('BUILD FEASIBILITY ONLY: real-hardware support remains gated by #27')
+          PY
