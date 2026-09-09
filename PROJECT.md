@@ -19,6 +19,11 @@ Smartphone / Tablet / PC Browser
 
 現在の正式なreference deviceはM5Stack NanoC6。複数M5Stackデバイスへの対応拡張をproject scopeに含む。
 
+### Current device status
+
+- **M5Stack NanoC6** — 正式なreference / supported device。4 MiBの既存baselineを維持する。
+- **M5Stack AtomS3 Lite** — compile-time firmware target、8 MiB flash/release profile、device-aware installer、Hosted release-contract validationまで実装済み。Issue #27のreal-hardware support gateが完了するまでは正式supported deviceとは表現しない。
+
 ## Scope
 
 ### In scope
@@ -63,6 +68,11 @@ Smartphone / Tablet / PC Browser
 
 `config/devices/<device-id>.json`を、host-side build / flash validation / distribution toolingが参照するdevice/release contractとする。
 
+現在の明示profileは次の2つ。
+
+- `config/devices/m5stack-nanoc6.json`
+- `config/devices/m5stack-atoms3-lite.json`
+
 profileには少なくとも次を明示する。
 
 - stable device id / display name / release name
@@ -72,10 +82,13 @@ profileには少なくとも次を明示する。
 - partition CSV
 - full-flash image名
 - bootloader / partition table / boot_app0 / firmware / solver / Web imageのoffset、exclusive limit、bundle内filename
+- Web Serial installerのSerial表示名と、必要な場合のdevice-specific recovery guidance
 
 `tools/check_flash_layout.py`と`tools/build_release_bundle.py`は`--device`または`--profile`による明示選択を要求し、NanoC6を暗黙defaultとして適用しない。profileとpartition CSVまたは実image容量が矛盾する場合はpublishable bundle生成前にfail closedとする。
 
-このprofileはhost-sideのbuild/release contractであり、GPIO、Servo pin、button active level、LED、device library等のruntime hardware adaptationを表すものではない。runtime abstractionは具体的な2台目deviceの実差分を確認したうえで`[Decision]` / `[Spec]`により決定し、将来deviceを想像したHALを先行導入しない。
+通常のHosted firmware workflowはNanoC6とAtomS3 Liteを2つの明示laneでbuildし、各deviceのprofile/partition、full image、manifest、release metadataを独立baselineに対して検証する。manual release workflowも対象deviceを明示選択し、そのdeviceだけのartifactを生成する。CIの成功はbuild/release contractの成立を示すが、AtomS3 Liteの実機support証跡を代替しない。
+
+このprofileはhost-sideのbuild/release contractであり、GPIO、Servo pin、button active level、LED、device library等のruntime hardware adaptationを表すものではない。runtime hardware差分は実際のreference device差分だけを`src/Hardware/DeviceControlsConfig.h`へ閉じ込め、将来deviceを想像したHALを先行導入しない。
 
 profileやPlatformIO targetを追加してbuildが成功しただけでは、そのdeviceをsupportedとは扱わない。supported deviceとする前に実機で少なくともboot、credential-free first boot / provisioning、Wi-Fi STA/AP、Web UI/API、Stand/Arm Servo、利用可能なphysical stop、solver initialization / solve / scramble、resource measurement、Web Serial install / distribution pathを確認する。
 
@@ -86,7 +99,7 @@ profileやPlatformIO targetを追加してbuildが成功しただけでは、そ
 - physical stopはWeb UI / Serialが利用できなくても機能し、少なくともrobot move境界でcooperativeに停止してArmを安全なready位置へ戻す。
 - large solver tableはSRAM常駐を前提としない。
 - standalone operationを損なうPC runtime dependencyや外部scramble / solver APIを再導入しない。
-- current reference deviceはNanoC6。実装容易性だけを理由にNanoC6 supportを落とさず、support変更には実測結果と明示Spec / user decisionを必要とする。
+- current formally supported reference deviceはNanoC6。AtomS3 Liteは#27のreal-hardware gate完了まではsupport pendingとする。
 - multi-device architectureの詳細は`[Map]` / `[Decision]` / `[Spec]`で決定し、未確定のfuture device向け抽象化を先回りして増やさない。
 - project-wide requirementを実装都合だけで黙って変更しない。変更が必要な場合はGitHub `[Decision]` / `[Spec]`またはユーザーの明示指示で合意を残す。
 - GitHub Issues / Pull RequestsをLoop Engineeringの進捗source of truthとし、別の進捗台帳を二重管理しない。
