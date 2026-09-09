@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import os
 import shutil
@@ -115,6 +116,21 @@ def place(
     }
 
 
+def _render_required_template(source: Path, replacements: dict[str, str]) -> str:
+    text = source.read_text(encoding="utf-8")
+    for token, replacement in replacements.items():
+        if token not in text:
+            raise ValueError(
+                f"installer template {source} missing required token: {token}"
+            )
+        text = text.replace(token, replacement)
+    if "__CUBE_" in text:
+        raise ValueError(
+            f"installer template {source} contains unresolved Cube placeholders"
+        )
+    return text
+
+
 def write_web_installer(
     output: Path,
     merged: Path,
@@ -126,17 +142,40 @@ def write_web_installer(
         raise FileNotFoundError(
             f"Web installer source directory not found: {WEB_INSTALLER_SOURCE}"
         )
-    for filename in ("index.html", "installer.js"):
-        source = WEB_INSTALLER_SOURCE / filename
+    index_source = WEB_INSTALLER_SOURCE / "index.html"
+    script_source = WEB_INSTALLER_SOURCE / "installer.js"
+    for source in (index_source, script_source):
         if not source.is_file():
             raise FileNotFoundError(f"Web installer source not found: {source}")
     if not ca_cert.is_file():
         raise FileNotFoundError(f"CA certificate not found: {ca_cert}")
 
+    recovery = profile.installer_recovery_guidance
+    rendered_index = _render_required_template(
+        index_source,
+        {
+            "__CUBE_DEVICE_DISPLAY_NAME__": html.escape(profile.display_name),
+            "__CUBE_DEVICE_SERIAL_LABEL_HTML__": html.escape(
+                profile.installer_serial_label
+            ),
+            "__CUBE_FULL_IMAGE__": html.escape(merged.name),
+            "__CUBE_RECOVERY_CLASS__": "" if recovery else "hidden",
+            "__CUBE_RECOVERY_GUIDANCE__": html.escape(recovery or ""),
+        },
+    )
+    rendered_script = _render_required_template(
+        script_source,
+        {
+            "__CUBE_DEVICE_SERIAL_LABEL_JS__": json.dumps(
+                profile.installer_serial_label, ensure_ascii=False
+            )[1:-1],
+        },
+    )
+
     web_output = output / "web-installer"
     web_output.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(WEB_INSTALLER_SOURCE / "index.html", web_output / "index.html")
-    shutil.copy2(WEB_INSTALLER_SOURCE / "installer.js", web_output / "installer.js")
+    (web_output / "index.html").write_text(rendered_index, encoding="utf-8")
+    (web_output / "installer.js").write_text(rendered_script, encoding="utf-8")
     shutil.copy2(merged, web_output / merged.name)
     shutil.copy2(ca_cert, web_output / "ca.crt")
 
@@ -282,6 +321,11 @@ def build_bundle(
         },
         "webInstaller": {
             "path": str(web_installer),
+            "deviceDisplayName": profile.display_name,
+            "serialLabel": profile.installer_serial_label,
+            "manifest": "manifest.json",
+            "fullImage": merged.name,
+            "recoveryGuidance": profile.installer_recovery_guidance,
             "publishableFiles": [
                 "index.html",
                 "installer.js",
