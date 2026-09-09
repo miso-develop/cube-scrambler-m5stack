@@ -2,19 +2,25 @@
 
 #include <Arduino.h>
 
+#include "DeviceControlsConfig.h"
+
 namespace move {
 class MoveManager;
 }
 
 namespace hardware {
 
-class NanoC6Controls {
+class HardwareControls {
  public:
-  explicit NanoC6Controls(move::MoveManager& moveManager)
+  explicit HardwareControls(move::MoveManager& moveManager)
       : moveManager_(moveManager) {}
 
   void begin(Stream* log = nullptr);
   void poll(Stream* log = nullptr);
+
+  static constexpr const char* deviceName() {
+    return kDeviceControls.deviceName;
+  }
 
  private:
   enum class LedState : uint8_t {
@@ -27,9 +33,6 @@ class NanoC6Controls {
   void updateStatusLed();
   void setLedState(LedState state);
 
-  static constexpr uint8_t kButtonPin = 9;
-  static constexpr uint8_t kRgbDataPin = 20;
-  static constexpr uint8_t kRgbPowerPin = 19;
   static constexpr uint32_t kDebounceMs = 30;
   static constexpr uint8_t kBrightness = 32;
 
