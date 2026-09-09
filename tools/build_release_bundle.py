@@ -141,7 +141,7 @@ def write_web_installer(
     shutil.copy2(ca_cert, web_output / "ca.crt")
 
     manifest = {
-        "name": f"Cube Scrambler {profile.display_name}",
+        "name": profile.release_name,
         "version": version,
         "new_install_prompt_erase": False,
         "new_install_improv_wait_time": 0,
@@ -180,10 +180,13 @@ def write_m5burner_metadata(
     firmware_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(merged, firmware_dir / _legacy_m5burner_filename(merged))
 
+    release_target = profile.release_name
+    if release_target.startswith("Cube Scrambler "):
+        release_target = release_target[len("Cube Scrambler ") :]
     metadata = {
-        "name": f"Cube Scrambler {profile.display_name}",
-        "description": f"Standalone Cube Scrambler firmware for {profile.display_name}",
-        "keywords": f"{profile.chip_family},M5Stack,Rubik's Cube",
+        "name": profile.release_name,
+        "description": f"Standalone Cube Scrambler firmware for {release_target}",
+        "keywords": f"{profile.chip_family},M5Stack,{release_target},Rubik's Cube",
         "author": "miso-develop",
         "repository": repository,
         "version": version,
@@ -265,7 +268,7 @@ def build_bundle(
     write_m5burner_metadata(output, merged, profile, version, repository)
 
     release_info = {
-        "name": f"Cube Scrambler {profile.display_name}",
+        "name": profile.release_name,
         "deviceId": profile.id,
         "version": version,
         "repository": repository,
