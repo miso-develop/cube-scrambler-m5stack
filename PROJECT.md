@@ -59,6 +59,26 @@ Smartphone / Tablet / PC Browser
 - 現在のNanoC6 build / flash layout / release pathをreference baselineとしてregressionさせない。
 - `.cmd`は`.gitattributes`に従ってcommitted blobも含めCRLFを維持する。Windows command entrypointは`.cmd`を使用し、新しい`.bat`を導入しない。
 
+## Device / release profile contract
+
+`config/devices/<device-id>.json`を、host-side build / flash validation / distribution toolingが参照するdevice/release contractとする。
+
+profileには少なくとも次を明示する。
+
+- stable device id / display name / release name
+- ESP Web Toolsの`chipFamily`
+- Flash総容量
+- PlatformIO release environment名
+- partition CSV
+- full-flash image名
+- bootloader / partition table / boot_app0 / firmware / solver / Web imageのoffset、exclusive limit、bundle内filename
+
+`tools/check_flash_layout.py`と`tools/build_release_bundle.py`は`--device`または`--profile`による明示選択を要求し、NanoC6を暗黙defaultとして適用しない。profileとpartition CSVまたは実image容量が矛盾する場合はpublishable bundle生成前にfail closedとする。
+
+このprofileはhost-sideのbuild/release contractであり、GPIO、Servo pin、button active level、LED、device library等のruntime hardware adaptationを表すものではない。runtime abstractionは具体的な2台目deviceの実差分を確認したうえで`[Decision]` / `[Spec]`により決定し、将来deviceを想像したHALを先行導入しない。
+
+profileやPlatformIO targetを追加してbuildが成功しただけでは、そのdeviceをsupportedとは扱わない。supported deviceとする前に実機で少なくともboot、credential-free first boot / provisioning、Wi-Fi STA/AP、Web UI/API、Stand/Arm Servo、利用可能なphysical stop、solver initialization / solve / scramble、resource measurement、Web Serial install / distribution pathを確認する。
+
 ## Invariants / decisions
 
 - 通常利用はM5Stack device内部でWeb UI、Cube logic、solver、move conversion、Servo controlまで完結する。
