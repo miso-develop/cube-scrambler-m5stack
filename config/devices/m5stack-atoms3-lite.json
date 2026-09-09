@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "m5stack-atoms3-lite",
+  "displayName": "M5Stack AtomS3 Lite",
+  "chipFamily": "ESP32-S3",
+  "flashSize": 8388608,
+  "platformio": {
+    "releaseEnv": "m5stack-atoms3-lite-release"
+  },
+  "partitionFile": "partitions/cube_scrambler_atoms3_lite_8mb.csv",
+  "release": {
+    "name": "Cube Scrambler AtomS3 Lite",
+    "fullImage": "cube-scrambler-atoms3-lite-full.bin"
+  },
+  "parts": [
+    {
+      "name": "bootloader",
+      "offset": 0,
+      "limit": 32768,
+      "destination": "bootloader.bin"
+    },
+    {
+      "name": "partitions",
+      "offset": 32768,
+      "limit": 36864,
+      "destination": "partitions.bin"
+    },
+    {
+      "name": "boot_app0",
+      "offset": 57344,
+      "limit": 65536,
+      "destination": "boot_app0.bin"
+    },
+    {
+      "name": "firmware",
+      "offset": 65536,
+      "limit": 2686976,
+      "destination": "firmware.bin"
+    },
+    {
+      "name": "solver",
+      "offset": 5308416,
+      "limit": 6881280,
+      "destination": "solver.bin"
+    },
+    {
+      "name": "web",
+      "offset": 6881280,
+      "limit": 8388608,
+      "destination": "web.bin"
+    }
+  ]
+}

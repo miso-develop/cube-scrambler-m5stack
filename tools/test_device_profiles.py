@@ -14,6 +14,7 @@ class DeviceProfilesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.nanoc6 = load_device_profile(device_id="m5stack-nanoc6")
+        cls.atoms3_lite = load_device_profile(device_id="m5stack-atoms3-lite")
 
     def test_nanoc6_profile_matches_release_baseline(self) -> None:
         self.assertEqual(self.nanoc6.id, "m5stack-nanoc6")
@@ -32,6 +33,30 @@ class DeviceProfilesTest(unittest.TestCase):
         self.assertEqual(self.nanoc6.part("solver").offset, 0x2B0000)
         self.assertEqual(self.nanoc6.part("web").offset, 0x3C0000)
         self.assertEqual(self.nanoc6.part("web").limit, 0x400000)
+
+    def test_atoms3_lite_profile_matches_decision(self) -> None:
+        self.assertEqual(self.atoms3_lite.id, "m5stack-atoms3-lite")
+        self.assertEqual(self.atoms3_lite.display_name, "M5Stack AtomS3 Lite")
+        self.assertEqual(self.atoms3_lite.chip_family, "ESP32-S3")
+        self.assertEqual(self.atoms3_lite.flash_size, 0x800000)
+        self.assertEqual(
+            self.atoms3_lite.platformio_release_env,
+            "m5stack-atoms3-lite-release",
+        )
+        self.assertEqual(
+            self.atoms3_lite.partition_file,
+            "partitions/cube_scrambler_atoms3_lite_8mb.csv",
+        )
+        self.assertEqual(
+            self.atoms3_lite.full_image,
+            "cube-scrambler-atoms3-lite-full.bin",
+        )
+        self.assertEqual(self.atoms3_lite.part("firmware").offset, 0x10000)
+        self.assertEqual(self.atoms3_lite.part("firmware").limit, 0x290000)
+        self.assertEqual(self.atoms3_lite.part("solver").offset, 0x510000)
+        self.assertEqual(self.atoms3_lite.part("solver").limit, 0x690000)
+        self.assertEqual(self.atoms3_lite.part("web").offset, 0x690000)
+        self.assertEqual(self.atoms3_lite.part("web").limit, 0x800000)
 
     def test_explicit_profile_path_loads_same_profile(self) -> None:
         profile_path = (
