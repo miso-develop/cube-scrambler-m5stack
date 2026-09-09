@@ -39,12 +39,98 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate_host_sources:
+    name: Validate host-side tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.node-version'
+          package-manager-cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Validate host-side sources
+        run: |
+          node --check tools/web_installer/installer.js
+          node --check tools/generate_min2phase_tables.js
+          node --check tools/generate_web_ui.js
+          node --check tools/finalize_web_bootstrap.js
+          python -m py_compile tools/device_profiles.py tools/build_release_bundle.py tools/check_flash_layout.py tools/generate_https_cert.py tools/test_device_profiles.py tools/test_profile_driven_release.py
+          python tools/test_device_profiles.py
+          python tools/test_profile_driven_release.py
+
   build:
-    name: Build and validate NanoC6 distribution
+    name: Build and validate ${{ matrix.label }} distribution
+    needs: validate_host_sources
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: m5stack-nanoc6
+            label: NanoC6
+            pio_env: m5stack-nanoc6-release
+            release_name: Cube Scrambler NanoC6
+            display_name: M5Stack NanoC6
+            serial_label: NanoC6
+            chip_family: ESP32-C6
+            flash_size: '0x400000'
+            partition_file: partitions/cube_scrambler_4mb.csv
+            full_image: cube-scrambler-nanoc6-full.bin
+            firmware_offset: '0x10000'
+            firmware_limit: '0x160000'
+            solver_offset: '0x2B0000'
+            solver_limit: '0x3C0000'
+            web_offset: '0x3C0000'
+            web_limit: '0x400000'
+            recovery: 'false'
+          - device: m5stack-atoms3-lite
+            label: AtomS3 Lite
+            pio_env: m5stack-atoms3-lite-release
+            release_name: Cube Scrambler AtomS3 Lite
+            display_name: M5Stack AtomS3 Lite
+            serial_label: AtomS3 Lite
+            chip_family: ESP32-S3
+            flash_size: '0x800000'
+            partition_file: partitions/cube_scrambler_atoms3_lite_8mb.csv
+            full_image: cube-scrambler-atoms3-lite-full.bin
+            firmware_offset: '0x10000'
+            firmware_limit: '0x290000'
+            solver_offset: '0x510000'
+            solver_limit: '0x690000'
+            web_offset: '0x690000'
+            web_limit: '0x800000'
+            recovery: 'true'
     env:
-      CUBE_DEVICE: m5stack-nanoc6
+      CUBE_DEVICE: ${{ matrix.device }}
+      PIO_ENV: ${{ matrix.pio_env }}
+      EXPECTED_RELEASE_NAME: ${{ matrix.release_name }}
+      EXPECTED_DISPLAY_NAME: ${{ matrix.display_name }}
+      EXPECTED_SERIAL_LABEL: ${{ matrix.serial_label }}
+      EXPECTED_CHIP_FAMILY: ${{ matrix.chip_family }}
+      EXPECTED_FLASH_SIZE: ${{ matrix.flash_size }}
+      EXPECTED_PARTITION_FILE: ${{ matrix.partition_file }}
+      EXPECTED_FULL_IMAGE: ${{ matrix.full_image }}
+      EXPECTED_FIRMWARE_OFFSET: ${{ matrix.firmware_offset }}
+      EXPECTED_FIRMWARE_LIMIT: ${{ matrix.firmware_limit }}
+      EXPECTED_SOLVER_OFFSET: ${{ matrix.solver_offset }}
+      EXPECTED_SOLVER_LIMIT: ${{ matrix.solver_limit }}
+      EXPECTED_WEB_OFFSET: ${{ matrix.web_offset }}
+      EXPECTED_WEB_LIMIT: ${{ matrix.web_limit }}
+      EXPECTED_RECOVERY: ${{ matrix.recovery }}
 
     steps:
       - name: Checkout
@@ -67,22 +153,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.platformio/.cache
-          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/**', 'config/devices/**') }}
+          key: ${{ runner.os }}-platformio-${{ matrix.device }}-${{ hashFiles('platformio.ini', 'boards/**', 'config/devices/**', 'partitions/**') }}
           restore-keys: |
+            ${{ runner.os }}-platformio-${{ matrix.device }}-
             ${{ runner.os }}-platformio-
 
       - name: Install tooling
         run: python -m pip install --disable-pip-version-check platformio==6.1.19 "cryptography>=45,<47"
-
-      - name: Validate host-side sources
-        run: |
-          node --check tools/web_installer/installer.js
-          node --check tools/generate_min2phase_tables.js
-          node --check tools/generate_web_ui.js
-          node --check tools/finalize_web_bootstrap.js
-          python -m py_compile tools/device_profiles.py tools/build_release_bundle.py tools/check_flash_layout.py tools/generate_https_cert.py tools/test_device_profiles.py tools/test_profile_driven_release.py
-          python tools/test_device_profiles.py
-          python tools/test_profile_driven_release.py
 
       - name: Generate Min2Phase table image
         run: node tools/generate_min2phase_tables.js --output .pio/min2phase-tables.bin
@@ -96,10 +173,10 @@ jobs:
         run: python tools/generate_https_cert.py --output-dir local/https --web-dir .pio/web-ui --hostname cube-scrambler.local
 
       - name: Build credential-free release firmware
-        run: pio run -e m5stack-nanoc6-release
+        run: pio run -e "$PIO_ENV"
 
       - name: Build release Web SPIFFS
-        run: pio run -e m5stack-nanoc6-release -t buildfs
+        run: pio run -e "$PIO_ENV" -t buildfs
 
       - name: Validate final flash layout
         run: python tools/check_flash_layout.py --device "$CUBE_DEVICE"
@@ -107,115 +184,68 @@ jobs:
       - name: Build full-flash release bundle
         run: python tools/build_release_bundle.py --device "$CUBE_DEVICE" --version ci
 
-      - name: Validate NanoC6 release contract
+      - name: Validate independent release baseline
         run: |
           test -f .pio/release/web-installer/index.html
           test -f .pio/release/web-installer/installer.js
           test -f .pio/release/web-installer/manifest.json
-          test -f .pio/release/web-installer/cube-scrambler-nanoc6-full.bin
+          test -f ".pio/release/web-installer/$EXPECTED_FULL_IMAGE"
           test -f .pio/release/web-installer/ca.crt
           node --check .pio/release/web-installer/installer.js
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           root = Path('.pio/release')
-          manifest = json.loads((root / 'web-installer' / 'manifest.json').read_text(encoding='utf-8'))
+          web_root = root / 'web-installer'
+          manifest = json.loads((web_root / 'manifest.json').read_text(encoding='utf-8'))
           release = json.loads((root / 'release.json').read_text(encoding='utf-8'))
+          index = (web_root / 'index.html').read_text(encoding='utf-8')
+          script = (web_root / 'installer.js').read_text(encoding='utf-8')
           parts = {part['name']: part for part in release['parts']}
 
-          # These are independent NanoC6 baseline guards. They intentionally do
-          # not derive expected values from the profile under test.
-          assert manifest['name'] == 'Cube Scrambler NanoC6'
-          assert manifest['builds'][0]['chipFamily'] == 'ESP32-C6'
-          assert manifest['builds'][0]['parts'] == [{'path': 'cube-scrambler-nanoc6-full.bin', 'offset': 0}]
+          expected_flash_size = int(os.environ['EXPECTED_FLASH_SIZE'], 0)
+          expected_full_image = os.environ['EXPECTED_FULL_IMAGE']
+          expected_recovery = os.environ['EXPECTED_RECOVERY'] == 'true'
+
+          # These expected values are declared independently in the workflow
+          # matrix. Do not derive them from the device profile under test.
+          assert manifest['name'] == os.environ['EXPECTED_RELEASE_NAME']
+          assert manifest['builds'][0]['chipFamily'] == os.environ['EXPECTED_CHIP_FAMILY']
+          assert manifest['builds'][0]['parts'] == [{'path': expected_full_image, 'offset': 0}]
           assert manifest['new_install_improv_wait_time'] == 0
-          assert (root / 'web-installer' / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
-          assert release['name'] == 'Cube Scrambler NanoC6'
-          assert release['deviceId'] == 'm5stack-nanoc6'
-          assert release['flashSize'] == 0x400000
-          assert release['platformioReleaseEnv'] == 'm5stack-nanoc6-release'
-          assert release['partitionFile'] == 'partitions/cube_scrambler_4mb.csv'
-          assert release['mergedImage']['path'] == 'cube-scrambler-nanoc6-full.bin'
-          assert release['mergedImage']['size'] == 0x400000
+          assert (web_root / expected_full_image).stat().st_size == expected_flash_size
+
+          assert release['name'] == os.environ['EXPECTED_RELEASE_NAME']
+          assert release['deviceId'] == os.environ['CUBE_DEVICE']
+          assert release['flashSize'] == expected_flash_size
+          assert release['platformioReleaseEnv'] == os.environ['PIO_ENV']
+          assert release['partitionFile'] == os.environ['EXPECTED_PARTITION_FILE']
+          assert release['mergedImage']['path'] == expected_full_image
+          assert release['mergedImage']['size'] == expected_flash_size
           assert release['repository'] == 'https://github.com/miso-develop/cube-scrambler-m5stack'
-          assert parts['solver']['offset'] == 0x2B0000
-          assert parts['web']['offset'] == 0x3C0000
-          assert parts['web']['limit'] == 0x400000
-          PY
 
-  atoms3_lite_build_feasibility:
-    name: AtomS3 Lite build feasibility (not support)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      CUBE_DEVICE: m5stack-atoms3-lite
+          assert parts['firmware']['offset'] == int(os.environ['EXPECTED_FIRMWARE_OFFSET'], 0)
+          assert parts['firmware']['limit'] == int(os.environ['EXPECTED_FIRMWARE_LIMIT'], 0)
+          assert parts['solver']['offset'] == int(os.environ['EXPECTED_SOLVER_OFFSET'], 0)
+          assert parts['solver']['limit'] == int(os.environ['EXPECTED_SOLVER_LIMIT'], 0)
+          assert parts['web']['offset'] == int(os.environ['EXPECTED_WEB_OFFSET'], 0)
+          assert parts['web']['limit'] == int(os.environ['EXPECTED_WEB_LIMIT'], 0)
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+          installer = release['webInstaller']
+          assert installer['deviceDisplayName'] == os.environ['EXPECTED_DISPLAY_NAME']
+          assert installer['serialLabel'] == os.environ['EXPECTED_SERIAL_LABEL']
+          assert installer['fullImage'] == expected_full_image
+          if expected_recovery:
+              assert installer['recoveryGuidance']
+              assert 'green LED' in installer['recoveryGuidance']
+          else:
+              assert installer['recoveryGuidance'] is None
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: '.node-version'
-          package-manager-cache: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-
-      - name: Cache PlatformIO
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.platformio/.cache
-          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/**', 'config/devices/**') }}
-          restore-keys: |
-            ${{ runner.os }}-platformio-
-
-      - name: Install tooling
-        run: python -m pip install --disable-pip-version-check platformio==6.1.19 "cryptography>=45,<47"
-
-      - name: Generate Min2Phase table image
-        run: node tools/generate_min2phase_tables.js --output .pio/min2phase-tables.bin
-
-      - name: Generate pinned Web UI assets
-        run: |
-          node tools/generate_web_ui.js --output .pio/web-ui
-          node tools/finalize_web_bootstrap.js --web-dir .pio/web-ui
-
-      - name: Generate distribution HTTPS certificate
-        run: python tools/generate_https_cert.py --output-dir local/https --web-dir .pio/web-ui --hostname cube-scrambler.local
-
-      - name: Build AtomS3 Lite credential-free firmware
-        run: pio run -e m5stack-atoms3-lite-release
-
-      - name: Build AtomS3 Lite Web SPIFFS
-        run: pio run -e m5stack-atoms3-lite-release -t buildfs
-
-      - name: Validate AtomS3 Lite 8 MiB layout
-        run: python tools/check_flash_layout.py --device "$CUBE_DEVICE"
-
-      - name: Record build-feasibility evidence
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          build = Path('.pio/build/m5stack-atoms3-lite-release')
-          firmware = build / 'firmware.bin'
-          solver = Path('.pio/min2phase-tables.bin')
-          web = build / 'spiffs.bin'
-
-          assert firmware.stat().st_size <= 0x280000
-          assert solver.stat().st_size <= 0x180000
-          assert web.stat().st_size <= 0x170000
-
-          print(f'AtomS3 Lite firmware: {firmware.stat().st_size} bytes / {0x280000} bytes')
-          print(f'AtomS3 Lite solver image: {solver.stat().st_size} bytes / {0x180000} bytes')
-          print(f'AtomS3 Lite Web SPIFFS: {web.stat().st_size} bytes / {0x170000} bytes')
-          print('BUILD FEASIBILITY ONLY: real-hardware support remains gated by #27')
+          assert os.environ['EXPECTED_DISPLAY_NAME'] in index
+          assert expected_full_image in index
+          assert os.environ['EXPECTED_SERIAL_LABEL'] in script
+          assert '__CUBE_' not in index
+          assert '__CUBE_' not in script
           PY
