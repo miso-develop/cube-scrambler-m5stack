@@ -8,6 +8,7 @@ on:
       - '.github/workflows/firmware-build.yml'
       - '.node-version'
       - 'boards/**'
+      - 'config/devices/**'
       - 'include/**'
       - 'partitions/**'
       - 'platformio.ini'
@@ -21,6 +22,7 @@ on:
       - '.github/workflows/firmware-build.yml'
       - '.node-version'
       - 'boards/**'
+      - 'config/devices/**'
       - 'include/**'
       - 'partitions/**'
       - 'platformio.ini'
@@ -41,6 +43,8 @@ jobs:
     name: Build and validate NanoC6 distribution
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      CUBE_DEVICE: m5stack-nanoc6
 
     steps:
       - name: Checkout
@@ -63,7 +67,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.platformio/.cache
-          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/**') }}
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini', 'boards/**', 'config/devices/**') }}
           restore-keys: |
             ${{ runner.os }}-platformio-
 
@@ -98,16 +102,12 @@ jobs:
         run: pio run -e m5stack-nanoc6-release -t buildfs
 
       - name: Validate final flash layout
-        run: >-
-          python tools/check_flash_layout.py
-          --device m5stack-nanoc6
-          --firmware .pio/build/m5stack-nanoc6-release/firmware.bin
-          --web .pio/build/m5stack-nanoc6-release/spiffs.bin
+        run: python tools/check_flash_layout.py --device "$CUBE_DEVICE"
 
       - name: Build full-flash release bundle
-        run: python tools/build_release_bundle.py --device m5stack-nanoc6 --version ci
+        run: python tools/build_release_bundle.py --device "$CUBE_DEVICE" --version ci
 
-      - name: Validate release bundle
+      - name: Validate NanoC6 release contract
         run: |
           test -f .pio/release/web-installer/index.html
           test -f .pio/release/web-installer/installer.js
@@ -118,9 +118,14 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
           root = Path('.pio/release')
           manifest = json.loads((root / 'web-installer' / 'manifest.json').read_text(encoding='utf-8'))
           release = json.loads((root / 'release.json').read_text(encoding='utf-8'))
+          parts = {part['name']: part for part in release['parts']}
+
+          # These are independent NanoC6 baseline guards. They intentionally do
+          # not derive expected values from the profile under test.
           assert manifest['name'] == 'Cube Scrambler NanoC6'
           assert manifest['builds'][0]['chipFamily'] == 'ESP32-C6'
           assert manifest['builds'][0]['parts'] == [{'path': 'cube-scrambler-nanoc6-full.bin', 'offset': 0}]
@@ -128,5 +133,13 @@ jobs:
           assert (root / 'web-installer' / 'cube-scrambler-nanoc6-full.bin').stat().st_size == 0x400000
           assert release['name'] == 'Cube Scrambler NanoC6'
           assert release['deviceId'] == 'm5stack-nanoc6'
+          assert release['flashSize'] == 0x400000
+          assert release['platformioReleaseEnv'] == 'm5stack-nanoc6-release'
+          assert release['partitionFile'] == 'partitions/cube_scrambler_4mb.csv'
+          assert release['mergedImage']['path'] == 'cube-scrambler-nanoc6-full.bin'
+          assert release['mergedImage']['size'] == 0x400000
           assert release['repository'] == 'https://github.com/miso-develop/cube-scrambler-m5stack'
+          assert parts['solver']['offset'] == 0x2B0000
+          assert parts['web']['offset'] == 0x3C0000
+          assert parts['web']['limit'] == 0x400000
           PY
