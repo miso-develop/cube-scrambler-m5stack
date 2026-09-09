@@ -17,14 +17,18 @@ PROJECT.md
    └─ handoff
 ```
 
-GitHub Issue / Pull Requestが進捗のsource of truthです。通常完了したiterationについて別の進捗ファイルを更新しません。
+GitHub Issues / Pull Requestsはplanning・判断・implementation stateと変更履歴のsource of truthです。repositoryは現在有効なsystem stateのsource of truthで、code、configuration、durable documentation、tests/checksなど必要な形で保持します。通常完了したiterationについて別の進捗ファイルを更新しません。
+
+`[Spec]`は「何が成立すれば完成か」というcontractです。test / static check / build check / runtime check / reviewはそのcontractを確かめるverification evidenceであり、Specそのものと同義ではありません。
+
+Map / Decision / Specで得た内容をすべてrepositoryへコピーするわけではありません。次回以降の開発でも現在仕様として必要なdurable knowledgeだけをrepositoryへ反映します。詳細な判定・closeout ruleは`agent/WORK-TRACKING.md`を参照します。
 
 ## Work item
 
-- `[Map]`: 大きく曖昧なworkのdecision map
-- `[Decision]`: Map配下の1つの判断事項
-- `[Spec]`: 実装前に確定したfeature仕様
-- `[Task]`: production codeを変更する実装単位
+- `[Map]`: 大きく曖昧なworkのExploration Map。implementation Epicではない。
+- `[Decision]`: Map配下の1つの判断事項。
+- `[Spec]`: 実装前に確定したfeature contract。
+- `[Task]`: repositoryを変更する実装単位。必要ならcodeに加えてconfig / durable docs / verification更新も含む。
 
 ## 1. 新しい要件・機能
 
@@ -38,6 +42,10 @@ GitHub Issue / Pull Requestが進捗のsource of truthです。通常完了し�
 
 ユーザーが事前にIssueを作る必要はありません。
 
+Mapは実装進捗を追うEpicではありません。in-scopeのDecisionが解決し、残るfogが整理され、必要なSpecが作成された時点でcloseできます。TaskやPRの完了までは待ちません。
+
+Decisionも実装完了を待つためにopenにしません。answer / evidenceが確定し、必要なdurable knowledge更新のownershipが決まったらcloseできます。
+
 ## 2. 要件だけ整理して実装しない
 
 > この内容をSpec化してください。実装はまだ開始しないでください。
@@ -45,13 +53,15 @@ GitHub Issue / Pull Requestが進捗のsource of truthです。通常完了し�
 - 何を作るかがほぼ決まっている → `to-spec`
 - 何を作るべきか、どう設計すべきかに未決定事項が多い → `wayfinder`
 
+Spec作成時には、実装要件だけでなく「この変更後もrepository current truthとして残すべき知識があるか」も初期評価します。ただし最終判断はcloseout時に再評価します。
+
 ## 3. 既存要件を変更する
 
 openなSpecの未実装部分ならSpec / Taskを必要に応じて更新します。
 
 既にclose済みのSpecやproductionへmerge済みの要件を変更する場合は、過去Specを履歴として保持し、変更差分を新しい`[Spec]`として作成するのを基本とします。
 
-project全体に恒久的に効く制約・不変条件が変わる場合だけ`PROJECT.md`も更新します。
+project全体に恒久的に効く制約・不変条件が変わる場合は`PROJECT.md`を更新します。それ以外でも、将来の開発が現在仕様として知る必要があるarchitecture / decision rationale / durable contractが変わる場合は、適切なrepository truthも更新します。過去Issueだけを現在仕様の唯一の参照元にしません。
 
 ## 4. 実装だけ進める / 次Taskを任せる
 
@@ -65,11 +75,15 @@ project全体に恒久的に効く制約・不変条件が変わる場合だけ`
 
 1 implementation iterationで扱うTaskは1件です。
 
+AgentはTask / Parent Spec / Decisionだけでなく、実装を拘束するrepository current truthも確認します。
+
 ## 5. 大きいSpecをTaskへ分割する
 
 > [Spec] #30 を実装可能なTaskへ分解してください。まだ実装はしないでください。
 
 `to-tickets`はvertical sliceを基本とし、作成TaskはSpecの`Implementation tasks`へ記録します。
+
+repository knowledge promotionがbehavior changeと不可分なら同じTaskのAcceptance Criteriaへ含め、独立してreview可能なら専用Taskにできます。Task Issueそのものを恒久documentationとしてrepositoryへコピーする必要はありません。
 
 ## 6. 設計・技術調査
 
@@ -84,6 +98,8 @@ project全体に恒久的に効く制約・不変条件が変わる場合だけ`
 一次情報を使う技術調査:
 
 > このdevice / libraryの仕様と互換性をresearchしてください。まだ実装は不要です。
+
+調査やDecisionから将来も必要なarchitecture / compatibility / ownership ruleが得られた場合は、closed Issueだけに閉じ込めずdownstream Spec / Taskへrepository promotionを引き継ぎます。
 
 ## 7. 不具合を修正する
 
@@ -103,7 +119,9 @@ project全体に恒久的に効く制約・不変条件が変わる場合だけ`
 
 > ここで止めます。次回再開できるようhandoffを残してください。
 
-Agentはactive IssueまたはPRへcheckpointを残します。正常merge済みworkにはhandoff不要です。
+Agentはactive IssueまたはPRへcheckpointを残します。未反映のdurable knowledgeがある場合は、そのpromotionもcheckpointに明示します。handoff comment自体を恒久仕様の保存先にはしません。
+
+正常merge済みworkにはhandoff不要です。
 
 ## 9. PR review / conflict解消
 
@@ -139,7 +157,17 @@ feature closeout:
 
 > [Spec] #30 は完了扱いにできますか。全TaskとRequirementsを確認してください。
 
-Specは`Implementation tasks`がすべてclosedでRequirementsが満たされている場合にcloseできます。
+Specは単に`Implementation tasks`がすべてclosedなら完了ではありません。closeoutでは次も確認します。
+
+- 全Taskがclosed
+- Requirementsが成立
+- 必要なautomated / reproducible verificationが存在し結果を確認済み
+- 必要な実機verificationがSpecに含まれる場合、そのevidenceがある
+- repository knowledge impactを再判定済み
+- 必要なdurable knowledge更新が`main`へmerge済み
+- docs / implementation / configuration / verificationに既知の矛盾がない
+
+不足があればSpecをopenのまま維持し、必要なTaskを追加します。
 
 ## Verification
 
@@ -160,5 +188,6 @@ docs / planningだけの変更でfirmware workflowが起動しない場合、wor
 - PR bodyへ`Closes #...`を手作業で入れる
 - verification結果を別文書へ転記する
 - 正常完了iterationのhandoffを作る
+- durable knowledgeを過去Issueから毎回探し直す
 
 ユーザーは、何をしたいか、どこまで進めたいか、重要な意思決定に集中します。Skill名を覚える必要はありません。
