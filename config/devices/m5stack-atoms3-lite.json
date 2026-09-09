@@ -12,6 +12,10 @@
     "name": "Cube Scrambler AtomS3 Lite",
     "fullImage": "cube-scrambler-atoms3-lite-full.bin"
   },
+  "installer": {
+    "serialLabel": "AtomS3 Lite",
+    "recoveryGuidance": "If automatic flashing does not enter download mode, hold Reset for about 2 seconds until the internal green LED lights, then release it and retry the installation."
+  },
   "parts": [
     {
       "name": "bootloader",
